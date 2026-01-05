@@ -1,15 +1,12 @@
 import { MonitorCogIcon, Moon, Sun } from "lucide-react";
+import { ModeToggle } from "./utils/mode-toggle";
 
 const Header = ({ name }: { name: string }) => {
   return <>
   <div className="flex justify-between w-full " >
    <div>{name}</div>
    <div className="flex space-x-5">
-    <span>Theme  </span>
-   
-    <Sun/>
-    <Moon/>
-    <MonitorCogIcon/>
+     <ModeToggle/>
     </div>
     </div>
   </>;

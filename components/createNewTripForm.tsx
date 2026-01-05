@@ -1,39 +1,257 @@
 "use client";
 
 import { insertTripSchema } from "@/lib/validators";
+import { BUDGET_RANGE, INTERESTS_LIST } from "@/lib/variables";
+import { format } from "date-fns";
 import { useState } from "react";
-import { Form, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import z from "zod";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "./ui/form";
 import { Input } from "./ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon, ArrowRightLeft } from "lucide-react";
+import { Button } from "./ui/button";
+import { Calendar } from "./ui/calendar";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
+import { Slider } from "./ui/slider";
+import Header from "./header";
 const CreateNewTripForm = () => {
   const [step, setStep] = useState(1);
   const form = useForm<z.infer<typeof insertTripSchema>>({
     resolver: zodResolver(insertTripSchema),
+    defaultValues: {
+      destination: "",
+      interests: [],
+      budget: [BUDGET_RANGE[0], BUDGET_RANGE[1]],
+    },
   });
+
+  const startDate = form.watch("startDate");
+  const endDate = form.watch("endDate");
+  const destination = form.watch("destination");
+
+  function handleNextStep(): void {
+    const isStepValid = form.trigger(["destination", "startDate", "endDate"]);
+    isStepValid.then((valid) => {
+      if (valid) {
+        setStep((prev) => prev + 1);
+      }
+    });
+  }
+
   return (
-    <Form {...form}>
-      <form
-        className="space-y-8"
-        onSubmit={form.handleSubmit((data) => console.log(data))}
-      >
-        <FormField
-          control={form.control}
-          name="destination"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>UserName</FormLabel>
-              <FormControl>
-                <Input placeholder="Destination" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </form>
-    </Form>
+    <>
+      <Header name="" />
+      <Form {...form}>
+        <form
+          className="space-y-8 flex flex-col justify-center   h-full"
+          onSubmit={form.handleSubmit((data) => console.log(data))}
+        >
+          <h1 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[24px] text-left w-full">
+            Create Your New Journey
+          </h1>
+          <FormField
+            control={form.control}
+            name="destination"
+            render={({ field }) => (
+              <FormItem className="p-6 bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full">
+                <FormLabel className="text-[20px]">
+                  Where do you want to go?
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Destination" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="space-y-2 p-6 bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full">
+            <div className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[20px]  ">
+              When are you traveling?
+            </div>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <div className="flex flex-col sm:flex-row items-center gap-4 cursor-pointer w-full pt-1">
+                  {/*  (Start Date) */}
+                  <div className="relative w-full">
+                    <Button
+                      type="button"
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal border-slate-600 hover:border-cyan-400 transition-colors",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? (
+                        format(startDate, "LLL dd, y")
+                      ) : (
+                        <span>Start Date</span>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Arrow */}
+                  <div className="text-slate-400">
+                    <ArrowRightLeft size={20} />
+                  </div>
+
+                  {/*  (End Date) */}
+                  <div className="relative w-full">
+                    <Button
+                      type="button"
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal border-slate-600 hover:border-cyan-400 transition-colors",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? (
+                        format(endDate, "LLL dd, y")
+                      ) : (
+                        <span>End Date</span>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </PopoverTrigger>
+
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={startDate}
+                  selected={{ from: startDate, to: endDate }}
+                  onSelect={(range) => {
+                    form.setValue("startDate", range?.from as Date);
+                    form.setValue("endDate", range?.to as Date);
+
+                    if (range?.from && range?.to) {
+                      form.trigger(["startDate", "endDate"]);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  disabled={(date) =>
+                    date < new Date(new Date().setHours(0, 0, 0, 0))
+                  }
+                />
+              </PopoverContent>
+            </Popover>
+
+            {(form.formState.errors.startDate ||
+              form.formState.errors.endDate) && (
+              <p className="text-sm font-medium text-destructive">
+                Please select a valid date range
+              </p>
+            )}
+          </div>
+
+          <FormField
+            control={form.control}
+            name="interests"
+            render={({ field }) => (
+              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 pt-8">
+                <FormLabel className="text-[20px] mb-4 block">
+                  Select Interests
+                </FormLabel>
+                <FormControl>
+                  <ToggleGroup
+                    type="multiple"
+                    variant={"outline"}
+                    size="lg"
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    spacing={20}
+                    className="flex flex-wrap justify-center w-full "
+                  >
+                    {INTERESTS_LIST.map((interest) => (
+                      <ToggleGroupItem
+                        key={interest}
+                        value={interest}
+                        className="rounded-full px-5 py-3 border-slate-600 text-slate-400 
+                                      data-[state=on]:bg-cyan-500/20 
+                                      data-[state=on]:border-cyan-400 
+                                      data-[state=on]:text-cyan-400 
+                                      hover:bg-slate-800 hover:text-white"
+                      >
+                        {interest}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {/*BUDGET SECTION*/}
+          <FormField
+            control={form.control}
+            defaultValue={BUDGET_RANGE}
+            name="budget"
+            render={({ field }) => (
+              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6">
+                <FormLabel className="text-sm font-medium">
+                  Budget (USD)
+                </FormLabel>
+
+                <FormControl>
+                  <div className="space-y-4 pt-2">
+                    <div className="flex justify-between text-sm font-bold">
+                      <span>${field.value?.[0]}</span>
+                      <span>${field.value?.[1]}</span>
+                    </div>
+
+                    <Slider
+                      min={0}
+                      max={10000}
+                      step={100}
+                      defaultValue={BUDGET_RANGE}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      className="py-4"
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/*BUTTONS SECTION*/}
+          <div className=" bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6  flex justify-between">
+            <Button
+              variant="outline"
+              disabled={step === 1}
+              onClick={() => setStep((prev) => prev - 1)}
+              className="min-w-25 mt-2"
+            >
+              Back
+            </Button>
+            <Button
+              type="submit"
+              onClick={handleNextStep}
+              className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 mt-2"
+            >
+              Generate a trip to{" "}
+              {destination ? destination : "your destination"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </>
   );
 };
 
