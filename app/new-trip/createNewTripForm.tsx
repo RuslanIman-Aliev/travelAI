@@ -15,16 +15,20 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "./ui/form";
-import { Input } from "./ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+} from "../../components/ui/form";
+import { Input } from "../../components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../../components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, ArrowRightLeft } from "lucide-react";
-import { Button } from "./ui/button";
-import { Calendar } from "./ui/calendar";
-import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
-import { Slider } from "./ui/slider";
-import Header from "./header";
+import { Button } from "../../components/ui/button";
+import { Calendar } from "../../components/ui/calendar";
+import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
+import { Slider } from "../../components/ui/slider";
+import Header from "../../components/header";
 const CreateNewTripForm = () => {
   const [step, setStep] = useState(1);
   const form = useForm<z.infer<typeof insertTripSchema>>({
@@ -51,7 +55,6 @@ const CreateNewTripForm = () => {
 
   return (
     <>
-      <Header name="" />
       <Form {...form}>
         <form
           className="space-y-8 flex flex-col justify-center   h-full"

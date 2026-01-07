@@ -1,9 +1,13 @@
-import CreateNewTripForm from "@/components/createNewTripForm";
+import CreateNewTripForm from "@/app/new-trip/createNewTripForm";
+import Header from "@/components/header";
 
 const CreateNewTrip = () => {
-  return ( <>
-  <CreateNewTripForm />
-  </> );
-}
- 
+  return (
+    <>
+      <Header />
+      <CreateNewTripForm />
+    </>
+  );
+};
+
 export default CreateNewTrip;
