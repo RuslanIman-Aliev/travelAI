@@ -29,7 +29,6 @@ const Header = async () => {
       </div>
     );
   }
-  console.log("Session in Header:", session);
   return (
     <div className="flex justify-end w-full  gap-4">
       <div className="flex  gap-4">{fragment}</div>

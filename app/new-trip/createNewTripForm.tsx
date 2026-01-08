@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { insertTripSchema } from "@/lib/validators";
 import { BUDGET_RANGE, INTERESTS_LIST } from "@/lib/variables";
 import { format } from "date-fns";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
@@ -28,9 +28,10 @@ import { Button } from "../../components/ui/button";
 import { Calendar } from "../../components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { Slider } from "../../components/ui/slider";
-import Header from "../../components/header";
+import { insertTrip } from "@/lib/actions/trip.actions";
+import { toast } from "sonner";
+
 const CreateNewTripForm = () => {
-  const [step, setStep] = useState(1);
   const form = useForm<z.infer<typeof insertTripSchema>>({
     resolver: zodResolver(insertTripSchema),
     defaultValues: {
@@ -43,22 +44,41 @@ const CreateNewTripForm = () => {
   const startDate = form.watch("startDate");
   const endDate = form.watch("endDate");
   const destination = form.watch("destination");
+  const onError = (errors: any) => {
+    console.log("❌ Form Validation Errors:", errors);
+    toast.error("Please fill in all required fields correctly.");
+  };
+  const onSubmit = async (data: z.infer<typeof insertTripSchema>) => {
+    const res = await insertTrip(data);
 
-  function handleNextStep(): void {
-    const isStepValid = form.trigger(["destination", "startDate", "endDate"]);
-    isStepValid.then((valid) => {
-      if (valid) {
-        setStep((prev) => prev + 1);
+    if (!res.success) {
+      toast.error(res.message);
+    }
+    console.log(res);
+    toast.success(res.message);
+    form.reset();
+
+    if (res.tripId) {
+      // Example: Start the background job immediately
+      try {
+        await fetch("/api/start-trip", {
+          method: "POST",
+          body: JSON.stringify({ tripId: res.tripId }),
+        });
+      } catch (err) {
+        console.log(err);
       }
-    });
-  }
+
+      // 4. Redirect using the ID from the server
+    }
+  };
 
   return (
     <>
       <Form {...form}>
         <form
           className="space-y-8 flex flex-col justify-center   h-full"
-          onSubmit={form.handleSubmit((data) => console.log(data))}
+          onSubmit={form.handleSubmit(onSubmit, onError)}
         >
           <h1 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[24px] text-left w-full">
             Create Your New Journey
@@ -147,9 +167,7 @@ const CreateNewTripForm = () => {
                     }
                   }}
                   numberOfMonths={2}
-                  disabled={(date) =>
-                    date < new Date(new Date().setHours(0, 0, 0, 0))
-                  }
+                  disabled={(date) => date < new Date(new Date())}
                 />
               </PopoverContent>
             </Popover>
@@ -236,16 +254,7 @@ const CreateNewTripForm = () => {
           {/*BUTTONS SECTION*/}
           <div className=" bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6  flex justify-between">
             <Button
-              variant="outline"
-              disabled={step === 1}
-              onClick={() => setStep((prev) => prev - 1)}
-              className="min-w-25 mt-2"
-            >
-              Back
-            </Button>
-            <Button
               type="submit"
-              onClick={handleNextStep}
               className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 mt-2"
             >
               Generate a trip to{" "}

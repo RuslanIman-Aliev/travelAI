@@ -11,7 +11,7 @@ import Link from "next/link";
 export default function Home() {
   return (
     <>
-      <Header name="Dashboard" />
+      <Header />
       <Card className="w-auto mt-10 bg-hero border-hero-border shadow-xl ">
         <CardContent className="pt-6">
           <h2 className="text-3xl font-bold mb-2">
