@@ -3,7 +3,6 @@
 import { auth } from "@/auth";
 import { insertTripSchema } from "@/lib/validators";
 import { prisma } from "@/prisma";
-import { format } from "date-fns";
 import z from "zod";
 import { formatError } from "../utils";
 
