@@ -19,10 +19,10 @@ export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
       tripData.endDate.getTime() - tripData.startDate.getTime();
     const daysCount = Math.ceil(differenceInTime / (1000 * 3600 * 24)) + 1;
 
-    const newTrip =await prisma.trip.create({
+    const newTrip = await prisma.trip.create({
       data: {
         destination: tripData.destination,
-        startDate: tripData.startDate, 
+        startDate: tripData.startDate,
         endDate: tripData.endDate,
         interests: tripData.interests,
         budget,
@@ -30,8 +30,54 @@ export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
         userId: session.user.id,
       },
     });
-    return { success: true, message: "Trip created successfully" , tripId: newTrip.id };
+    return {
+      success: true,
+      message: "Trip created successfully",
+      tripId: newTrip.id,
+    };
   } catch (error) {
-    return { success: false, message: formatError(error) || "An unexpected error occurred" };
+    return {
+      success: false,
+      message: formatError(error) || "An unexpected error occurred",
+    };
+  }
+}
+
+export async function getTripById(tripId: string) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, message: "User not found" };
+    }
+    const trip = await prisma.trip.findFirst({
+      where: {
+        id: tripId,
+        userId: session.user.id,
+      },
+      include: {
+        tripDays: {
+          orderBy: {
+            dayNumber: "asc",
+          },
+          include: {
+            activities: {
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!trip) {
+      return { success: false, message: "Trip not found" };
+    }
+
+    return { success: true, trip };
+  } catch (error) {
+    return {
+      success: false,
+      message: formatError(error) || "An unexpected error occurred",
+    };
   }
 }

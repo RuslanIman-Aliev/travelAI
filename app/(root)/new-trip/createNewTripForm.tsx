@@ -15,19 +15,22 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../components/ui/form";
-import { Input } from "../../components/ui/input";
+} from "../../../components/ui/form";
+import { Input } from "../../../components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../../components/ui/popover";
+} from "../../../components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, ArrowRightLeft } from "lucide-react";
-import { Button } from "../../components/ui/button";
-import { Calendar } from "../../components/ui/calendar";
-import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
-import { Slider } from "../../components/ui/slider";
+import { Button } from "../../../components/ui/button";
+import { Calendar } from "../../../components/ui/calendar";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "../../../components/ui/toggle-group";
+import { Slider } from "../../../components/ui/slider";
 import { insertTrip } from "@/lib/actions/trip.actions";
 import { toast } from "sonner";
 

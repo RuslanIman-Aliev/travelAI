@@ -2,7 +2,8 @@
 import { prisma } from "@/prisma";
 import { inngest } from "./client";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getAIPrompt } from "../utils";
+import { getAIPrompt, getPhotoByDestination } from "../utils";
+import { tr } from "date-fns/locale";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -88,10 +89,10 @@ export const generateTripFunction = inngest.createFunction(
           })
         )
       );
-
+      const destinationImage = await getPhotoByDestination(trip.destination);
       await prisma.trip.update({
         where: { id: tripId },
-        data: { aiGenerated: true, status: "generated" },
+        data: { aiGenerated: true, status: "generated", imageUrl: destinationImage || null },
       });
     });
 

@@ -10,8 +10,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <>
-      <Header />
+    <div className="m-10">
       <Card className="w-auto mt-10 bg-hero border-hero-border shadow-xl ">
         <CardContent className="pt-6">
           <h2 className="text-3xl font-bold mb-2">
@@ -40,6 +39,6 @@ export default function Home() {
         <StatsCard title="Countries" value={12} />
         <StatsCard title="Destinations" value={8} />
       </div>
-    </>
+    </div>
   );
 }

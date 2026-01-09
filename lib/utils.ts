@@ -1,10 +1,12 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 import { type Trip } from "@prisma/client";
-
+import { ca } from "date-fns/locale";
+import { PEXELS_API_KEY } from "./variables";
+import { success } from "zod";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,7 +43,9 @@ export function formatError(error: any) {
 
 export function getAIPrompt({ trip }: { trip: Trip }) {
   // We format the dates nicely for the AI
-  const formattedDates = `${new Date(trip.startDate).toDateString()} to ${new Date(trip.endDate).toDateString()}`;
+  const formattedDates = `${new Date(
+    trip.startDate
+  ).toDateString()} to ${new Date(trip.endDate).toDateString()}`;
 
   return `
 You are an expert local travel guide and budget planner.
@@ -50,8 +54,14 @@ Create a detailed, day-by-day travel itinerary for the following trip:
 TRIP DETAILS:
 - **Destination**: ${trip.destination}
 - **Dates**: ${formattedDates} (${trip.daysCount} days)
-- **Traveler Interests**: ${trip.interests?.join(", ") || "General sightseeing, Local culture"}
-- **Total Budget**: ${trip.budget ? `${trip.budget} (Currency of the destination)` : "Moderate/Standard"}
+- **Traveler Interests**: ${
+    trip.interests?.join(", ") || "General sightseeing, Local culture"
+  }
+- **Total Budget**: ${
+    trip.budget
+      ? `${trip.budget} (Currency of the destination)`
+      : "Moderate/Standard"
+  }
 
 CRITICAL INSTRUCTIONS:
 1. **Budget Enforcement**: The user has a budget of ${trip.budget}. 
@@ -98,4 +108,30 @@ JSON STRUCTURE TO FOLLOW:
   ]
 }
 `;
+}
+
+export async function getPhotoByDestination(destination: string) {
+  try {
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(
+      destination
+    )}&per_page=1&orientation=landscape&size=large`;
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: PEXELS_API_KEY || "",
+      },
+      next: { revalidate: 3600 },
+    });
+
+    const data = await response.json();
+
+    if (data.photos && data.photos.length > 0) {
+      return data.photos[0].src.large2x;
+    }
+
+    return null;
+  } catch (error) {
+    
+    return {success: false, message: "Failed to fetch photo"};
+  }
 }
