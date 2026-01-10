@@ -19,7 +19,7 @@ const TripHeader = async ({ trip }: { trip: Trip }) => {
       />
 
       {/*  Dark Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent dark:bg-[linear-gradient(to_right,#09090bCC,#232328cc)]" />
+      <div className="absolute inset-0 bg-linear-to-b from-transparent dark:bg-[linear-gradient(to_right,#09090bCC,#232328cc)]" />
 
       {/*  Content Container (Centered) */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 p-4 gap-8">
@@ -50,7 +50,7 @@ const TripHeader = async ({ trip }: { trip: Trip }) => {
           {/* Interests Badge */}
           <Button variant="outline" className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white">
             <MapPin className="w-4 h-4 mr-2 text-cyan-400" />
-            <span className="truncate max-w-[200px] md:max-w-none">
+            <span className="truncate max-w-50 md:max-w-none">
                {trip.interests.join(", ")}
             </span>
           </Button>

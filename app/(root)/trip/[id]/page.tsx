@@ -1,9 +1,10 @@
 import { getTripById } from "@/lib/actions/trip.actions";
-import TripHeader from "./header";
+import TripHeader from "../../../../components/trip/header";
 import { notFound } from "next/navigation";
-import { ActivityCard } from "./activity";
+import { ActivityCard } from "../../../../components/trip/activity";
 
-import DayChanger from "./dayChanger";
+import DayChanger from "../../../../components/trip/dayChanger";
+import { MapComponent } from "@/components/map/map-component";
 
 const TripPage = async (props: {
   params: Promise<{ id: string }>;
@@ -24,8 +25,7 @@ const TripPage = async (props: {
     <>
       <TripHeader trip={trip.trip} />
       <DayChanger totalDays={trip.trip.daysCount} />
-      <div className="flex pt-8 pb-8 m-10">
-        
+      <div className="flex pt-8 pb-8 m-10 gap-5">
         <div className=" w-[60%]">
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {day?.activities.map((activity: any, index) => {
@@ -47,7 +47,11 @@ const TripPage = async (props: {
         </div>
 
         <div className="flex w-[40%]">
-          {/* Map component would be rendered here */}
+          <div className="sticky top-[45%] h-[50vh] w-full">
+            <div className="h-full w-full rounded-xl overflow-hidden">
+              <MapComponent day={day} />
+            </div>
+          </div>
         </div>
       </div>
     </>
