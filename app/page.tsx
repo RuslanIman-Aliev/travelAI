@@ -1,4 +1,3 @@
-import Header from "@/components/header";
 import { StatsCard } from "@/components/home/statsCard";
 import { Button } from "@/components/ui/button";
 import {
