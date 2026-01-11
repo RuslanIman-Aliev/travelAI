@@ -2,7 +2,6 @@ import {
   AudioWaveform,
   CirclePlay,
   LayoutDashboard,
-  LogOut,
   Map,
   Settings,
 } from "lucide-react";
@@ -40,22 +39,13 @@ const mainItems = [
   },
   {
     title: "Live Guide",
-    url: "/guide",
+    url: "/live-guide",
     icon: AudioWaveform,
   },
   {
     title: "Settings",
     url: "/settings",
     icon: Settings,
-  },
-];
-
-//Footer items
-const footerItems = [
-  {
-    title: "Log Out",
-    url: "/logout",
-    icon: LogOut,
   },
 ];
 

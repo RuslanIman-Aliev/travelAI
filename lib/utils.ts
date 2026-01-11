@@ -79,8 +79,12 @@ CRITICAL INSTRUCTIONS:
    - Do not include markdown code blocks (like \`\`\`json). 
    - Do not include introductory text.
 
-JSON STRUCTURE TO FOLLOW:
-
+4. **Geolocation Accuracy**:
+   - Ensure all GPS coordinates ('lat', 'lng') are ACCURATE and located specifically within **${
+     trip.destination
+   }**.
+   - Do NOT guess coordinates. If you are unsure, set them to '0'.
+   - Double-check that latitude and longitude signs (+/-) are correct for this specific region.
 {
   "trip_title": "A catchy name for this trip (e.g., 'Parisian Art & Food Escape')",
   "currency": "The local currency code (e.g., EUR, USD, JPY)",
@@ -97,8 +101,8 @@ JSON STRUCTURE TO FOLLOW:
           "category": "One of: [Sightseeing, Food, Relax, Adventure, Shopping, Culture]",
           "description": "Engaging 1-sentence description focusing on why this matches user interests.",
           "geo_coordinates": {
-             "lat": 0.00,
-             "lng": 0.00
+             "lat": "number (Must be exact latitude for this place)",
+             "lng": "number (Must be exact longitude for this place)"
           },
           "ticket_pricing": "Estimated cost (e.g. 'Free' or '20 EUR')",
           "rating": "Estimated rating 1-5"
@@ -131,7 +135,6 @@ export async function getPhotoByDestination(destination: string) {
 
     return null;
   } catch (error) {
-    
-    return {success: false, message: "Failed to fetch photo"};
+    return { success: false, message: "Failed to fetch photo" };
   }
 }

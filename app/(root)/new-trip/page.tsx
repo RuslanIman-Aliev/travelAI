@@ -1,4 +1,4 @@
-import CreateNewTripForm from "@/app/(root)/new-trip/createNewTripForm";
+import CreateNewTripForm from "@/app/(root)/new-trip/create-new-trip-form";
 
 const CreateNewTrip = () => {
   return (

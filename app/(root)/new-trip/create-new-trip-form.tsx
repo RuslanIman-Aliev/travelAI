@@ -33,7 +33,8 @@ import {
 import { Slider } from "../../../components/ui/slider";
 import { insertTrip } from "@/lib/actions/trip.actions";
 import { toast } from "sonner";
-
+import { redirect } from "next/navigation";
+import { useTransition } from "react";
 const CreateNewTripForm = () => {
   const form = useForm<z.infer<typeof insertTripSchema>>({
     resolver: zodResolver(insertTripSchema),
@@ -48,32 +49,23 @@ const CreateNewTripForm = () => {
   const endDate = form.watch("endDate");
   const destination = form.watch("destination");
   const onError = (errors: any) => {
-    console.log("❌ Form Validation Errors:", errors);
     toast.error("Please fill in all required fields correctly.");
   };
-  const onSubmit = async (data: z.infer<typeof insertTripSchema>) => {
-    const res = await insertTrip(data);
 
-    if (!res.success) {
-      toast.error(res.message);
-    }
-    console.log(res);
-    toast.success(res.message);
-    form.reset();
+  const [isPending, startTransition] = useTransition();
+  const onSubmit =  (data: z.infer<typeof insertTripSchema>) => {
+   startTransition(async () => {
+      const res = await insertTrip(data);
 
-    if (res.tripId) {
-      // Example: Start the background job immediately
-      try {
-        await fetch("/api/start-trip", {
-          method: "POST",
-          body: JSON.stringify({ tripId: res.tripId }),
-        });
-      } catch (err) {
-        console.log(err);
+      if (!res.success) {
+        toast.error(res.message);
+        return;
       }
 
-      // 4. Redirect using the ID from the server
-    }
+      toast.success(res.message);
+       form.reset(); 
+      redirect(`/trip/${res.tripId}`);
+    });
   };
 
   return (
@@ -255,10 +247,11 @@ const CreateNewTripForm = () => {
           />
 
           {/*BUTTONS SECTION*/}
-          <div className=" bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6  flex justify-between">
+          <div className=" bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6  flex justify-end">
             <Button
               type="submit"
               className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 mt-2"
+              disabled={isPending}
             >
               Generate a trip to{" "}
               {destination ? destination : "your destination"}
