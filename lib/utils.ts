@@ -1,9 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { type Trip } from "@prisma/client";
-import { ca } from "date-fns/locale";
 import { PEXELS_API_KEY } from "./variables";
-import { success } from "zod";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
