@@ -48,7 +48,7 @@ export const generateTripFunction = inngest.createFunction(
         const json = JSON.parse(text);
 
         console.log("---------------- AI RESPONSE ----------------");
-        console.log(JSON.stringify( json, null, 2));
+        console.log(JSON.stringify(json, null, 2));
         console.log("---------------------------------------------");
 
         return json;
@@ -58,14 +58,14 @@ export const generateTripFunction = inngest.createFunction(
       }
     });
 
-    if (aiResult.error) {      
+    if (aiResult.error) {
       await step.run("handle-invalid-location", async () => {
         await prisma.trip.update({
-            where: { id: tripId },
-            data: { 
-                status: "failed", 
-                aiGenerated: false 
-            } 
+          where: { id: tripId },
+          data: {
+            status: "failed",
+            aiGenerated: false,
+          },
         });
       });
 
@@ -95,8 +95,12 @@ export const generateTripFunction = inngest.createFunction(
                   placeType: activity.category,
                   estimatedCost: activity.ticket_pricing,
 
-                  latitude: activity.geo_coordinates?.lat || null,
-                  longitude: activity.geo_coordinates?.lng || null,
+                  latitude: activity.geo_coordinates?.lat
+                    ? Number(activity.geo_coordinates.lat)
+                    : null,
+                  longitude: activity.geo_coordinates?.lng
+                    ? Number(activity.geo_coordinates.lng)
+                    : null,
                 })),
               },
             },
@@ -106,7 +110,11 @@ export const generateTripFunction = inngest.createFunction(
       const destinationImage = await getPhotoByDestination(trip.destination);
       await prisma.trip.update({
         where: { id: tripId },
-        data: { aiGenerated: true, status: "generated", imageUrl: destinationImage || null },
+        data: {
+          aiGenerated: true,
+          status: "generated",
+          imageUrl: destinationImage || null,
+        },
       });
     });
 
