@@ -79,13 +79,7 @@ CRITICAL INSTRUCTIONS:
    - Do not include markdown code blocks (like \`\`\`json). 
    - Do not include introductory text.
 
-4. **Geolocation Accuracy**:
-   - Ensure all GPS coordinates ('lat', 'lng') are ACCURATE and located specifically within **${
-     trip.destination
-   }**.
-   - Do NOT guess coordinates. If you are unsure, set them to '0'.
-   - Double-check that latitude and longitude signs (+/-) are correct for this specific region.
-   
+
 5. **Location Validation**:
    - Check if the **Destination** ("${trip.destination}") is a real, recognizable city or region on Earth.
    - If the input is gibberish (e.g., "sdfdsf"), a random string, or a place that does not exist:
@@ -106,8 +100,8 @@ CRITICAL INSTRUCTIONS:
           "category": "One of: [Sightseeing, Food, Relax, Adventure, Shopping, Culture]",
           "description": "Max 10 words. Keywords only.",
           "geo_coordinates": {
-             "lat": "number (Must be exact latitude for this place)",
-             "lng": "number (Must be exact longitude for this place)"
+             "lat": 0 (always 0),
+             "lng": 0 (always 0)
           },
           "ticket_pricing": "Estimated cost (e.g. 'Free' or '20 EUR')",
           "rating": "Estimated rating 1-5"
