@@ -104,7 +104,7 @@ CRITICAL INSTRUCTIONS:
           "time": "HH:MM (24h format)",
           "place_name": "Exact name of the place/restaurant",
           "category": "One of: [Sightseeing, Food, Relax, Adventure, Shopping, Culture]",
-          "description": "Engaging 1-sentence description focusing on why this matches user interests.",
+          "description": "Max 10 words. Keywords only.",
           "geo_coordinates": {
              "lat": "number (Must be exact latitude for this place)",
              "lng": "number (Must be exact longitude for this place)"
