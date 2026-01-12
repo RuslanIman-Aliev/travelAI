@@ -21,6 +21,7 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
   const [error, setError] = useState<string | null>(null);
 
   const [shouldPoll, setShouldPoll] = useState(false);
+  
  useEffect(() => {
     if (isFetched.current) return;
     isFetched.current = true;

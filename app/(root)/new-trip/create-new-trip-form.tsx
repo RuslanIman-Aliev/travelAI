@@ -179,7 +179,7 @@ const CreateNewTripForm = () => {
             control={form.control}
             name="interests"
             render={({ field }) => (
-              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 pt-8">
+              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 ">
                 <FormLabel className="text-[20px] mb-4 block">
                   Select Interests
                 </FormLabel>

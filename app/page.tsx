@@ -21,7 +21,7 @@ export default function Home() {
         </CardContent>
         <CardFooter className="flex gap-3">
           <Button className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold">
-            <Link href={""}>Start Planning</Link>
+            <Link href={"/new-trip"}>Start Planning</Link>
           </Button>
 
           <Button

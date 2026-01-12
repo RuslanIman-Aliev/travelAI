@@ -85,6 +85,11 @@ CRITICAL INSTRUCTIONS:
    }**.
    - Do NOT guess coordinates. If you are unsure, set them to '0'.
    - Double-check that latitude and longitude signs (+/-) are correct for this specific region.
+   
+5. **Location Validation**:
+   - Check if the **Destination** ("${trip.destination}") is a real, recognizable city or region on Earth.
+   - If the input is gibberish (e.g., "sdfdsf"), a random string, or a place that does not exist:
+     RETURN ONLY THIS JSON: { "error": "Location not found" }
 {
   "trip_title": "A catchy name for this trip (e.g., 'Parisian Art & Food Escape')",
   "currency": "The local currency code (e.g., EUR, USD, JPY)",

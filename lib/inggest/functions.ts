@@ -4,6 +4,7 @@ import { inngest } from "./client";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getAIPrompt, getPhotoByDestination } from "../utils";
 import { tr } from "date-fns/locale";
+import { NonRetriableError } from "inngest";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -57,6 +58,19 @@ export const generateTripFunction = inngest.createFunction(
       }
     });
 
+    if (aiResult.error) {      
+      await step.run("handle-invalid-location", async () => {
+        await prisma.trip.update({
+            where: { id: tripId },
+            data: { 
+                status: "failed", 
+                aiGenerated: false 
+            } 
+        });
+      });
+
+      throw new NonRetriableError(`Invalid Location: ${aiResult.error}`);
+    }
     await step.run("save-itinerary", async () => {
       const itinerary = aiResult.itinerary;
 
