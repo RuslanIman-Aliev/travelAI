@@ -121,7 +121,7 @@ export async function getPhotoByDestination(destination: string) {
   try {
     const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(
       destination
-    )}&per_page=1&orientation=landscape&size=large`;
+    )}&per_page=1&orientation=landscape&size=large` || "https://images.pexels.com/photos/268455/pexels-photo-268455.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
 
     const response = await fetch(url, {
       headers: {

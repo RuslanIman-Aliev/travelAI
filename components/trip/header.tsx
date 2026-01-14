@@ -5,7 +5,7 @@ import { Calendar, Wallet, MapPin } from "lucide-react";
 import Image from "next/image";
 
 const TripHeader = async ({ trip }: { trip: Trip }) => {
-  const bgImage = trip.imageUrl || "/placeholder-city.jpg";
+  const bgImage = trip.imageUrl!;
 
   return (
     <div className="relative w-full h-75 md:h-100  rounded-md overflow-hidden dark:bg-slate-900 bg-slate-50">

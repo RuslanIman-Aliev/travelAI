@@ -1,13 +1,12 @@
 import { getTripById } from "@/lib/actions/trip.actions";
 import TripHeader from "../../../../components/trip/header";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import DayChanger from "../../../../components/trip/dayChanger";
 import { MapComponent } from "@/components/map/map-component";
 import LoadingSpinner from "@/components/trip/loading";
 import TripItinerary from "@/components/trip/trip-itinerary";
 import { MapPinOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import RedirectButton from "@/components/utils/redirect-button";
 
 const TripPage = async (props: {

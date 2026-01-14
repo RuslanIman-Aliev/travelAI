@@ -3,7 +3,6 @@ import { prisma } from "@/prisma";
 import { inngest } from "./client";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getAIPrompt, getPhotoByDestination } from "../utils";
-import { tr } from "date-fns/locale";
 import { NonRetriableError } from "inngest";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
