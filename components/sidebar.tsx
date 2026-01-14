@@ -9,6 +9,7 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -19,6 +20,7 @@ import { Button } from "./ui/button";
 import { auth } from "@/auth";
 import { loginWithGoogle, logout } from "@/lib/actions/auth.actions";
 import Image from "next/image";
+import { SidebarLogo } from "./sidebar-logo";
 
 //Main navigation items
 const mainItems = [
@@ -66,22 +68,32 @@ const AppSidebar = async () => {
   } else {
     fragment = (
       <div className="">
-        <div className="relative w-8 h-8"><Image src={session.user.image!} alt="User Image" fill className="rounded-2xl"/></div>
-        <h2 className="text-lg font-medium">{session.user.name}!</h2>
+        <div className="relative w-8 h-8">
+          <Image
+            src={session.user.image!}
+            alt="User Image"
+            fill
+            className="rounded-2xl"
+          />
+        </div>
+        <h2 className="text-lg font-sans">{session.user.name}!</h2>
         <br />
       </div>
     );
   }
   return (
-    <Sidebar className="gap-5">
+    <Sidebar className="gap-5 font-medium ">
+      <SidebarHeader>
+        <SidebarLogo />
+      </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
           {mainItems.map((item) => (
-            <SidebarMenuItem key={item.title} className="mt-7">
+            <SidebarMenuItem key={item.title} className="mt-7 ">
               <SidebarMenuButton asChild>
                 <Link href={item.url}>
                   <item.icon />
-                  <span>{item.title}</span>
+                  <span className="text-base">{item.title}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
