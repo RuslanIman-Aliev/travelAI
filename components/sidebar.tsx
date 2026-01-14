@@ -2,7 +2,6 @@ import {
   AudioWaveform,
   CirclePlay,
   LayoutDashboard,
-  Map,
   Settings,
 } from "lucide-react";
 import {
@@ -25,7 +24,7 @@ import { SidebarLogo } from "./sidebar-logo";
 //Main navigation items
 const mainItems = [
   {
-    title: "Dashboard",
+    title: "My trips",
     url: "/",
     icon: LayoutDashboard,
   },
@@ -33,11 +32,6 @@ const mainItems = [
     title: "New Trip",
     url: "/new-trip",
     icon: CirclePlay,
-  },
-  {
-    title: "My Maps",
-    url: "/maps",
-    icon: Map,
   },
   {
     title: "Live Guide",

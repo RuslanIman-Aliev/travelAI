@@ -82,7 +82,7 @@ const CreateNewTripForm = () => {
             control={form.control}
             name="destination"
             render={({ field }) => (
-              <FormItem className="p-6 bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full">
+              <FormItem className="p-6 bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full transition-colors hover:border-white/20">
                 <FormLabel className="text-[20px]">
                   Where do you want to go?
                 </FormLabel>
@@ -94,7 +94,7 @@ const CreateNewTripForm = () => {
             )}
           />
 
-          <div className="space-y-2 p-6 bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full">
+          <div className="space-y-2 p-6 bg-hero border-2 border-hero-border shadow-xl transition-colors hover:border-white/20 rounded-2xl w-full">
             <div className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[20px]  ">
               When are you traveling?
             </div>
@@ -179,7 +179,7 @@ const CreateNewTripForm = () => {
             control={form.control}
             name="interests"
             render={({ field }) => (
-              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 ">
+              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 transition-colors hover:border-white/20">
                 <FormLabel className="text-[20px] mb-4 block">
                   Select Interests
                 </FormLabel>
@@ -218,7 +218,7 @@ const CreateNewTripForm = () => {
             defaultValue={BUDGET_RANGE}
             name="budget"
             render={({ field }) => (
-              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6">
+              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 transition-colors hover:border-white/20">
                 <FormLabel className="text-sm font-medium">
                   Budget (USD)
                 </FormLabel>
@@ -247,10 +247,10 @@ const CreateNewTripForm = () => {
           />
 
           {/*BUTTONS SECTION*/}
-          <div className=" bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6  flex justify-end">
+          <div className=" bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 transition-colors hover:border-white/20 flex justify-end">
             <Button
               type="submit"
-              className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 mt-2"
+              className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 "
               disabled={isPending}
             >
               Generate a trip to{" "}

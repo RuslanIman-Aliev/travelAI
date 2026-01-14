@@ -3,17 +3,12 @@
 
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { darkMapStyle } from "./map-dark-style";
-import { CSSProperties } from "react";
+import { CSSProperties, useMemo } from "react";
 
 const defaultMapContainerStyle: CSSProperties = {
   width: "100%",
   height: "100%",
   borderRadius: "15px",
-};
-
-const defaultMapCenter = {
-  lat: 48.8566,
-  lng: 2.3522,
 };
 
 const defaultMapOptions = {
@@ -25,6 +20,15 @@ const defaultMapOptions = {
 };
 
 const MapComponent = ({ day }: { day: any }) => {
+  const mapCenter = useMemo(() => {
+    if (day?.activities && day.activities.length > 0) {
+      return {
+        lat: day.activities[0].latitude,
+        lng: day.activities[0].longitude,
+      };
+    }
+    return { lat: 0, lng: 0 };
+  }, [day]);
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API as string,
@@ -37,7 +41,7 @@ const MapComponent = ({ day }: { day: any }) => {
     <div className="w-full h-full">
       <GoogleMap
         mapContainerStyle={defaultMapContainerStyle}
-        center={defaultMapCenter}
+        center={mapCenter}
         zoom={13}
         options={defaultMapOptions}
       >

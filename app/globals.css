@@ -225,8 +225,7 @@
   --sidebar-ring: oklch(0.439 0 0);
 --hero-card-bg: linear-gradient(to right, #09090b, #18181b);
  /* --hero-card-bg: linear-gradient(to right, #020617, #171520); */
-  --hero-card-border: oklch(1 0 0 / 0.1);
-}
+--hero-card-border: oklch(1 0 0 / 0.1);}
 
 @layer base {
   * {
@@ -237,3 +236,4 @@
     @apply bg-background text-foreground;
   }
 }
+
