@@ -1,8 +1,6 @@
-import { Button } from "@/components/ui/button";
 import { Trip } from "@prisma/client";
-import { format } from "date-fns";
-import { Calendar, Wallet, MapPin } from "lucide-react"; 
 import Image from "next/image";
+import Badges from "./badges";
 
 const TripHeader = async ({ trip }: { trip: Trip }) => {
   const bgImage = trip.imageUrl!;
@@ -30,32 +28,9 @@ const TripHeader = async ({ trip }: { trip: Trip }) => {
         </h1>
 
         {/* Buttons Row */}
-        <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
-          
-          {/* Date Badge */}
-          <Button variant="outline" className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white">
-            <Calendar className="w-4 h-4 mr-2 text-cyan-400" />
-            <span>
-              {format(new Date(trip.startDate), "MMM d")} -{" "}
-              {format(new Date(trip.endDate), "MMM d")}
-            </span>
-          </Button>
-
-          {/* Budget Badge */}
-          <Button variant="outline" className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white">
-            <Wallet className="w-4 h-4 mr-2 text-cyan-400" />
-            Budget: {trip.budget || "N/A"}$
-          </Button>
-
-          {/* Interests Badge */}
-          <Button variant="outline" className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white">
-            <MapPin className="w-4 h-4 mr-2 text-cyan-400" />
-            <span className="truncate max-w-50 md:max-w-none">
-               {trip.interests.join(", ")}
-            </span>
-          </Button>
-          
-        </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
+            <Badges trip={trip} />
+          </div>
       </div>
     </div>
   );

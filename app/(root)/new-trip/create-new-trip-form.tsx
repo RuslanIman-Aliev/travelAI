@@ -82,7 +82,7 @@ const CreateNewTripForm = () => {
             control={form.control}
             name="destination"
             render={({ field }) => (
-              <FormItem className="p-6 bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full transition-colors hover:border-white/20">
+              <FormItem className="main-card">
                 <FormLabel className="text-[20px]">
                   Where do you want to go?
                 </FormLabel>
@@ -94,7 +94,7 @@ const CreateNewTripForm = () => {
             )}
           />
 
-          <div className="space-y-2 p-6 bg-hero border-2 border-hero-border shadow-xl transition-colors hover:border-white/20 rounded-2xl w-full">
+          <div className="space-y-2 main-card">
             <div className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[20px]  ">
               When are you traveling?
             </div>
@@ -179,7 +179,7 @@ const CreateNewTripForm = () => {
             control={form.control}
             name="interests"
             render={({ field }) => (
-              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 transition-colors hover:border-white/20">
+              <FormItem className="main-card">
                 <FormLabel className="text-[20px] mb-4 block">
                   Select Interests
                 </FormLabel>
@@ -201,7 +201,7 @@ const CreateNewTripForm = () => {
                                       data-[state=on]:bg-cyan-500/20 
                                       data-[state=on]:border-cyan-400 
                                       data-[state=on]:text-cyan-400 
-                                      hover:bg-slate-800 hover:text-white"
+                                      hover:bg-slate-800 hover:text-white cursor-pointer"
                       >
                         {interest}
                       </ToggleGroupItem>
@@ -218,7 +218,7 @@ const CreateNewTripForm = () => {
             defaultValue={BUDGET_RANGE}
             name="budget"
             render={({ field }) => (
-              <FormItem className="bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 transition-colors hover:border-white/20">
+              <FormItem className="main-card">
                 <FormLabel className="text-sm font-medium">
                   Budget (USD)
                 </FormLabel>
@@ -247,7 +247,7 @@ const CreateNewTripForm = () => {
           />
 
           {/*BUTTONS SECTION*/}
-          <div className=" bg-hero border-2 border-hero-border shadow-xl rounded-2xl w-full p-6 transition-colors hover:border-white/20 flex justify-end">
+          <div className="main-card flex justify-end">
             <Button
               type="submit"
               className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 "

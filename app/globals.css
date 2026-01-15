@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --breakpoint-3xl: 120rem;
   --color-background: var(--background);
 
   --color-foreground: var(--foreground);
@@ -223,10 +224,25 @@
   --sidebar-border: oklch(1 0 0 / 10%);
 
   --sidebar-ring: oklch(0.439 0 0);
---hero-card-bg: linear-gradient(to right, #09090b, #18181b);
- /* --hero-card-bg: linear-gradient(to right, #020617, #171520); */
---hero-card-border: oklch(1 0 0 / 0.1);}
+  --hero-card-bg: linear-gradient(to right, #09090b, #18181b);
+  /* --hero-card-bg: linear-gradient(to right, #020617, #171520); */
+  --hero-card-border: oklch(1 0 0 / 0.1);
+}
+@layer components {
+  .main-card {
+    @apply p-6 border-2 shadow-xl rounded-2xl w-full transition-all duration-300;
 
+    background: var(--hero-card-bg);
+    border-color: var(--hero-card-border);
+
+    &:hover {
+      @media (hover: hover) {
+        border-color: oklch(1 0 0 / 0.25);
+        box-shadow: 0 0 20px -5px oklch(1 0 0 / 0.1);
+      }
+    }
+  }
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -236,4 +252,3 @@
     @apply bg-background text-foreground;
   }
 }
-

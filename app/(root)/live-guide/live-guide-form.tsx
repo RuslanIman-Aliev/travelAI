@@ -35,10 +35,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formSchema } from "@/lib/validators";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { getGoogleNearbyPlaces } from "@/lib/google-maps-api";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { set } from "zod";
 
 const LiveGuideForm = () => {
   const form = useForm<any>({
@@ -51,7 +52,6 @@ const LiveGuideForm = () => {
   });
 
   const radiusValue = form.watch("radius");
-
 
   const radiusOptions = [
     "1 km",
@@ -67,12 +67,14 @@ const LiveGuideForm = () => {
     null
   );
   const [availalablePlaces, setAvailalablePlaces] = useState<any[]>([]);
+  const [isPending, setIsPending] = useState(false);
 
   const handleUserLocation = async () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser"); // Change later to modal
       return;
     }
+    setIsPending(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         setCoords({
@@ -96,15 +98,19 @@ const LiveGuideForm = () => {
           } ${addr.town || ""}, ${addr.country || ""}`;
 
           form.setValue("location", formattedLocation);
+          if (form.formState.errors.location) {
+            form.clearErrors("location");
+          }
         } catch (error) {
           console.error("Error:", error);
           toast.error("Unable to retrieve your location. Please try again.");
         } finally {
-          //setIsLoadingLocation(false);
+          setIsPending(false);
         }
       },
       (error) => {
         console.error("Error obtaining location:", error);
+        setIsPending(false);
       }
     );
   };
@@ -131,6 +137,10 @@ const LiveGuideForm = () => {
 
     if (!currentLoc || !coords) {
       toast.error("Please share your location first.");
+      form.setError("location", {
+        type: "manual",
+        message: "Location is required.",
+      });
       return;
     }
 
@@ -141,6 +151,14 @@ const LiveGuideForm = () => {
       coords.lng,
       radiusNumber
     );
+    if (places.length === 0) {
+      toast.error("No places found in the specified radius.");
+      form.setError("places", {
+        type: "manual",
+        message: "Radius is required.",
+      });
+      return;
+    }
     setAvailalablePlaces(places);
     console.log("Places found:", places);
   };
@@ -158,22 +176,24 @@ const LiveGuideForm = () => {
       return;
     }
 
-   
-    const sortedPlaces = [...selected].sort((a: any, b: any) => a.distance - b.distance);
+    const sortedPlaces = [...selected].sort(
+      (a: any, b: any) => a.distance - b.distance
+    );
 
     const lastPlace = sortedPlaces[sortedPlaces.length - 1];
     const waypoints = sortedPlaces.slice(0, sortedPlaces.length - 1);
 
     const originStr = `${coords.lat},${coords.lng}`;
     const destStr = `${lastPlace.location.lat},${lastPlace.location.lng}`;
-    
+
     const waypointsStr = waypoints
       .map((p: any) => `${p.location.lat},${p.location.lng}`)
       .join("|");
 
     const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&waypoints=${waypointsStr}&travelmode=driving`;
 
-    console.log("Opening Route:", googleMapsUrl); 
+    console.log("Opening Route:", googleMapsUrl);
+    // Make a modal window about redirection
     window.open(googleMapsUrl, "_blank");
     toast.success("Route generated! Opening Google Maps...");
   };
@@ -191,8 +211,8 @@ const LiveGuideForm = () => {
 
   const se = form.watch("selectedPlaces")?.length || 0;
   return (
-    <div className="w-full h-full flex justify-center items-center">
-      <Card className="w-125 md:w-175">
+    <div className="w-full h-full flex justify-center items-center ">
+      <Card className="w-125 md:w-175 main-card pr-0! pl-0!">
         <CardContent>
           {/* 4. Wrap everything in the Form component */}
           <Form {...form}>
@@ -210,7 +230,11 @@ const LiveGuideForm = () => {
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Your location"
+                            placeholder={
+                              isPending
+                                ? "Loading location..."
+                                : "Your location"
+                            }
                             disabled={true}
                             {...field}
                           />
@@ -254,7 +278,12 @@ const LiveGuideForm = () => {
                                 <DropdownMenuItem
                                   key={option}
                                   onSelect={() => {
-                                    form.setValue("radius", option);
+                                    form.setValue("radius", option, {
+                                      shouldValidate: true,
+                                    });
+                                    if (form.formState.errors.radius) {
+                                      form.clearErrors("radius");
+                                    }
                                   }}
                                 >
                                   {option}
@@ -280,7 +309,7 @@ const LiveGuideForm = () => {
                     type="button" // Prevent submitting the form
                     onClick={handleUserLocation}
                   >
-                    Use Current Location
+                    {isPending ? "Loading..." : "Use Current Location"}
                   </Button>
                 </div>
               </div>
@@ -300,7 +329,9 @@ const LiveGuideForm = () => {
                       <div className="mb-4">
                         <FormLabel className="text-base">Places</FormLabel>
                         <FormDescription>
-                          Select the places you want to visit.
+                          {availalablePlaces.length === 0
+                            ? "Fill in the fields and click 'Find Places' to see results."
+                            : "Select the places you want to visit."}
                         </FormDescription>
                       </div>
                       <div className="flex flex-col gap-2">
@@ -311,7 +342,7 @@ const LiveGuideForm = () => {
                           return (
                             <div
                               className={cn(
-                                "flex items-start space-x-3 rounded-lg border p-3 shadow-sm",
+                                "flex items-start space-x-3 rounded-lg border p-3 shadow-sm main-card",
                                 "cursor-pointer transition-all duration-150 ease-out",
                                 "hover:bg-accent/50 hover:scale-[1.01]",
                                 "active:scale-[0.99]",
@@ -345,12 +376,14 @@ const LiveGuideForm = () => {
                                 {/* Row 1: Name and Badge */}
                                 <div className="flex items-center justify-between">
                                   <div className="flex flex-col min-w-0">
-                                    {" "}           
+                                    {" "}
                                     <FormLabel className="text-base font-semibold cursor-pointer truncate">
                                       {place.name}
                                     </FormLabel>
                                     <span className="text-xs text-muted-foreground truncate font-normal">
-                                      {place.address.split(",")[0]} {place.distance && `• ${place.distance} km`}
+                                      {place.address.split(",")[0]}{" "}
+                                      {place.distance &&
+                                        `• ${place.distance} km`}
                                     </span>
                                   </div>
                                   <Badge
@@ -413,6 +446,7 @@ const LiveGuideForm = () => {
                 onClick={
                   availalablePlaces.length === 0 ? onSearchPlaces : undefined
                 }
+                disabled={isPending}
                 className="w-full cursor-pointer"
               >
                 {availalablePlaces.length === 0

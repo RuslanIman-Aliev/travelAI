@@ -81,3 +81,25 @@ export async function getTripById(tripId: string) {
     };
   }
 }
+
+export async function getUserTrips(userId:string,status?:string, isGenerated?:boolean) {
+  try {
+    const trips = await prisma.trip.findMany({
+      where: {
+        userId: userId,
+        status: status ? status : undefined,
+        aiGenerated:isGenerated,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+    return { success: true, trips };
+  }
+  catch (error) {
+    return {
+      success: false,
+      message: formatError(error) || "An unexpected error occurred",
+    };
+  }
+}
