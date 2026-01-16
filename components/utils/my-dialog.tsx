@@ -30,7 +30,7 @@ export function MyModal({
             Maps or move to your dashboard.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-between">
+        <div className="flex flex-col md:flex-row md:justify-between">
           <Button
             variant="outline"
             className="mt-4 cursor-pointer"

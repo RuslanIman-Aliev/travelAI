@@ -8,6 +8,8 @@ import LoadingSpinner from "@/components/trip/loading";
 import TripItinerary from "@/components/trip/trip-itinerary";
 import { MapPinOff } from "lucide-react";
 import RedirectButton from "@/components/utils/redirect-button";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const TripPage = async (props: {
   params: Promise<{ id: string }>;
@@ -54,17 +56,22 @@ const TripPage = async (props: {
         <>
           <TripHeader trip={trip.trip} />
           <DayChanger totalDays={trip.trip.daysCount} />
-          <div className="flex pt-8 pb-8 m-10 gap-5">
-            <div className=" w-[60%]">
+          <div className="flex pt-8 pb-8 m-10 gap-5 max-[1050px]:flex-col">
+            <div className=" w-[60%] max-[1300px]:w-[70%] max-[1050px]:w-full">
               <TripItinerary activities={activities} />
             </div>
-            <div className="flex w-[40%]">
-              <div className="sticky top-[45%] h-[50vh] w-full">
+            <div className="flex w-[40%] max-[1300px]:w-[30%] max-[1050px]:w-full">
+              <div className="sticky top-[45%] h-[50vh] w-full max-[1300px]:h-[30vh]  max-[1050px]:h-[40vh]">
                 <div className="h-full w-full rounded-xl overflow-hidden">
                   <MapComponent day={day} />
                 </div>
               </div>
             </div>
+          </div>
+          <div className="flex justify-center p-10">
+            <Button className="w-full md:w-auto md:min-w-50" variant="outline">
+            <Link href={'/'}>To all your trips</Link>
+          </Button>
           </div>
         </>
       )}

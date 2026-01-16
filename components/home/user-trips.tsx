@@ -29,19 +29,19 @@ const UserTrips = async ({
       
       <div className="grid grid-cols-1  lg:grid-cols-2 3xl:grid-cols-3 gap-4 w-full ">
         {tripList?.map((trip) => (
-          <Card key={trip.id} className="p-0 pb-2  main-card">
+          <Card key={trip.id} className="p-0 pb-2  main-card max-[400px]:gap-2">
            <CardHeader className="p-0">
-             <CardTitle className="text-xl font-bold mb-2 ">
-              <div className="relative w-full h-80 rounded-lg overflow-hidden ">
+             <CardTitle className="text-xl font-bold mb-2 max-[400px]:mb-0 ">
+              <div className="relative w-full h-80 rounded-lg overflow-hidden max-[500px]:h-60">
                 <Image src={trip.imageUrl!} alt="Trip Image" fill className="object-cover "/>
                 <div className="absolute inset-0 bg-linear-to-b from-transparent dark:bg-[linear-gradient(to_right,#09090b66,#23232866)]" />
               </div>
               </CardTitle>
            </CardHeader>
-           <CardContent className="text-slate-400 text-[20px]">
+           <CardContent className="text-slate-400 text-[20px] max-[400px]:pt-0">
             {trip.destination || ""}, {trip.country || ""}
 
-           <div className="flex flex-wrap justify-center gap-3 pt-5">
+           <div className="flex flex-wrap justify-center gap-3 pt-5 max-[400px]:gap-1 max-[400px]:justify-start max-[400px]:pt-2">
              <Badges trip={trip} />
            </div>
 

@@ -38,7 +38,7 @@ export default function RootLayout({
                 <SidebarTrigger />
                 <span className="font-semibold">My Dashboard</span>
               </div>
-              <div className="flex-1 h-full overflow-auto">{children}</div>
+              <div className="flex-1 h-full">{children}</div>
             </main>
           </SidebarProvider>
           <Toaster />

@@ -29,10 +29,10 @@ const Badges = ({ trip }: { trip: any }) => {
       {/* Interests Badge */}
       <Button
         variant="outline"
-        className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white"
+        className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white max-[400px]:max-w-50"
       >
         <MapPin className="w-4 h-4 mr-2 text-cyan-400" />
-        <span className="truncate max-w-50 md:max-w-none">
+        <span className="truncate max-w-50 md:max-w-none max-[400px]:max-w-50 ">
           {trip.interests.join(", ")}
         </span>
       </Button>

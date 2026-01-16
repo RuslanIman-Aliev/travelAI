@@ -39,8 +39,9 @@ import { useState } from "react";
 import { getGoogleNearbyPlaces } from "@/lib/google-maps-api";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { saveLiveGuideRoute } from "@/lib/actions/live-guide";
+import { saveLiveGuideRoute } from "@/lib/actions/live-guide.actions";
 import { MyModal } from "@/components/utils/my-dialog";
+import { getAddressFromCoordinates } from "@/lib/actions/locations.actions";
 
 const LiveGuideForm = ({ userId }: { userId: string }) => {
   const form = useForm<any>({
@@ -87,18 +88,15 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`
-          );
+          const data = await getAddressFromCoordinates(lat, lng);
 
-          if (!response.ok) throw new Error("Failed to fetch address");
+          if (!data || !data.address)
+            throw new Error("Failed to fetch address");
 
-          const data = await response.json();
           const addr = data.address;
-
           const formattedLocation = `${addr.road || ""} ${
             addr.house_number || ""
-          } ${addr.town || ""}, ${addr.country || ""}`;
+          } ${addr.town || addr.city || ""}, ${addr.country || ""}`;
 
           form.setValue("location", formattedLocation);
           if (form.formState.errors.location) {
@@ -224,14 +222,14 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
   const se = form.watch("selectedPlaces")?.length || 0;
   return (
     <div className="w-full h-full flex justify-center items-center ">
-      <Card className="w-125 md:w-175 main-card pr-0! pl-0!">
+      <Card className="w-full max-w-125 md:max-w-175 main-card pr-0! pl-0!">
         <CardContent>
           {/* 4. Wrap everything in the Form component */}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="flex flex-row gap-5">
+              <div className="flex flex-row gap-5 max-[500px]:flex-col">
                 {/* LOCATION FIELD */}
-                <div className="flex flex-col w-[50%]">
+                <div className="flex flex-col w-[50%] max-[500px]:w-full">
                   <FormField
                     control={form.control}
                     name="location"
@@ -257,7 +255,7 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
                 </div>
 
                 {/* RADIUS FIELD (Custom Dropdown Integration) */}
-                <div className="flex flex-col w-[20%]">
+                <div className="flex flex-col w-[20%] max-[500px]:w-full">
                   <FormField
                     control={form.control}
                     name="radius"
@@ -310,7 +308,7 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
                 </div>
 
                 {/* SHARE LOCATION BUTTON */}
-                <div className="flex flex-col justify-end">
+                <div className="flex flex-col justify-end max-[500px]:w-full">
                   {/* This is kept as a standard button, not a submit button */}
                   <div className="mb-2 hidden md:block">
                     <Label className="opacity-0">Spacer</Label>
@@ -348,85 +346,88 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
                       </div>
                       <div className="flex flex-col gap-2">
                         {availalablePlaces.map((place) => {
-                          const isSelected = field.value?.some(
-                            (item: any) => item.id === place.id
-                          );
-                          return (
-                            <div
-                              className={cn(
-                                "flex items-start space-x-3 rounded-lg border p-3 shadow-sm main-card",
-                                "cursor-pointer transition-all duration-150 ease-out",
-                                "hover:bg-accent/50 hover:scale-[1.01]",
-                                "active:scale-[0.99]",
-                                isSelected
-                                  ? "border-primary bg-primary/5"
-                                  : "border-gray-200"
-                              )}
-                              key={place.id}
-                              onClick={() => togglePlaceById(place, field)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  togglePlaceById(place, field);
-                                }
-                              }}
-                            >
-                              <div
-                                className={cn(
-                                  "h-4 w-4 rounded border flex items-center justify-center",
-                                  isSelected
-                                    ? "bg-primary border-primary"
-                                    : "border-muted"
-                                )}
-                              >
-                                {isSelected && (
-                                  <Check className="h-3 w-3 text-white" />
-                                )}
-                              </div>
+  const isSelected = field.value?.some(
+    (item: any) => item.id === place.id
+  );
+  return (
+    <div
+      className={cn(
+        "flex items-start space-x-3 rounded-lg border p-3 shadow-sm main-card w-full", // Added w-full
+        "cursor-pointer transition-all duration-150 ease-out",
+        "hover:bg-accent/50 hover:scale-[1.01]",
+        "active:scale-[0.99]",
+        isSelected
+          ? "border-primary bg-primary/5"
+          : "border-gray-200"
+      )}
+      key={place.id}
+      onClick={() => togglePlaceById(place, field)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          togglePlaceById(place, field);
+        }
+      }}
+    >
+      {/* Checkbox: Prevent shrinking */}
+      <div
+        className={cn(
+          "h-4 w-4 rounded border flex items-center justify-center shrink-0 mt-1",
+          isSelected
+            ? "bg-primary border-primary"
+            : "border-muted"
+        )}
+      >
+        {isSelected && (
+          <Check className="h-3 w-3 text-white" />
+        )}
+      </div>
 
-                              <div className="space-y-1 leading-none w-full">
-                                {/* Row 1: Name and Badge */}
-                                <div className="flex items-center justify-between">
-                                  <div className="flex flex-col min-w-0">
-                                    {" "}
-                                    <FormLabel className="text-base font-semibold cursor-pointer truncate">
-                                      {place.name}
-                                    </FormLabel>
-                                    <span className="text-xs text-muted-foreground truncate font-normal">
-                                      {place.address.split(",")[0]}{" "}
-                                      {place.distance &&
-                                        `• ${place.distance} km`}
-                                    </span>
-                                  </div>
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs font-normal"
-                                  >
-                                    {place.category}
-                                  </Badge>
-                                </div>
+      <div className="space-y-1 leading-none w-full min-w-0">
+        
+        {/* Row 1: Name and Badge */}
+        <div className="flex items-start justify-between gap-2">
+          
+          <div className="flex flex-col min-w-0 flex-1">
+            <FormLabel className="text-base font-semibold cursor-pointer truncate pr-1 text-wrap">
+              {place.name}
+            </FormLabel>
+            <span className="text-xs text-muted-foreground truncate font-normal text-wrap">
+              {place.address.split(",")[0]}{" "}
+              {place.distance &&
+                `• ${place.distance} km`}
+            </span>
+          </div>
 
-                                {/* Row 2: Rating and Details */}
-                                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1.5">
-                                  <div className="flex items-center gap-1 text-amber-500 font-medium">
-                                    <Star className="h-3.5 w-3.5 fill-current" />
-                                    <span>{place.rating}</span>
-                                    <span className="text-gray-400 font-normal">
-                                      ({place.userRatingCount || 0})
-                                    </span>
-                                  </div>
+          <Badge
+            variant="secondary"
+            className="text-xs font-normal shrink-0"
+          >
+            {place.category}
+          </Badge>
+        </div>
 
-                                  {place.distance && (
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="h-3.5 w-3.5" />
-                                      <span>{place.distance} km</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+        {/* Row 2: Rating and Details */}
+        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1.5">
+          <div className="flex items-center gap-1 text-amber-500 font-medium shrink-0">
+            <Star className="h-3.5 w-3.5 fill-current" />
+            <span>{place.rating}</span>
+            <span className="text-gray-400 font-normal">
+              ({place.userRatingCount || 0})
+            </span>
+          </div>
+
+          {place.distance && (
+            <div className="flex items-center gap-1 shrink-0">
+              <MapPin className="h-3.5 w-3.5" />
+              <span>{place.distance} km</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+})}
                       </div>
                     </FormItem>
                   )}
@@ -459,7 +460,7 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
                   availalablePlaces.length === 0 ? onSearchPlaces : undefined
                 }
                 disabled={isPending}
-                className="w-full cursor-pointer"
+                className="w-full cursor-pointer max-[500px]:flex max-[500px]:justify-center"
               >
                 {availalablePlaces.length === 0
                   ? "Find Places"

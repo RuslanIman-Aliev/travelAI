@@ -264,10 +264,10 @@ const CreateNewTripForm = () => {
           />
 
           {/*BUTTONS SECTION*/}
-          <div className="main-card flex justify-end">
+          <div className="main-card flex max-md:justify-center justify-end ">
             <Button
               type="submit"
-              className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 "
+              className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 max-sm:w-[90%] max-sm:text-wrap"
               disabled={isPending}
             >
               {isPending ? "Generating a trip...." : "Generate trip"}  to{" "}

@@ -32,7 +32,7 @@ export default async function Home() {
         </CardFooter>
       </Card>
 
-      <div className="flex w-full gap-6 mt-10">
+      <div className="flex w-full gap-6 mt-10 max-[700px]:flex-wrap">
         <StatsCard title="Trips Planned" value={statistics?.tripsCount || 0} />
         <StatsCard title="Countries" value={statistics?.countries || 0} />
         <StatsCard title="Destinations" value={statistics?.cities || 0} />
