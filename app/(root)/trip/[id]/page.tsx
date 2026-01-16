@@ -55,7 +55,7 @@ const TripPage = async (props: {
       {trip.trip.aiGenerated && trip.trip.status === "generated" && (
         <>
           <TripHeader trip={trip.trip} />
-          <DayChanger totalDays={trip.trip.daysCount} />
+          <DayChanger totalDays={trip.trip.tripDays.length} />
           <div className="flex pt-8 pb-8 m-10 gap-5 max-[1050px]:flex-col">
             <div className=" w-[60%] max-[1300px]:w-[70%] max-[1050px]:w-full">
               <TripItinerary activities={activities} />
