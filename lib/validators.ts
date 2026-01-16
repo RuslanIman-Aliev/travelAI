@@ -4,6 +4,7 @@ import z from "zod";
 
 export const insertTripSchema = z.object({
   destination: z.string().min(1, "Destination is required"),
+  country: z.string().min(1, "Country is required"),
   startDate: z.date(),
   endDate: z.date(),
   interests: z.array(z.string()).optional(),

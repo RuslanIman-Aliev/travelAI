@@ -35,13 +35,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formSchema } from "@/lib/validators";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { getGoogleNearbyPlaces } from "@/lib/google-maps-api";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { set } from "zod";
+import { saveLiveGuideRoute } from "@/lib/actions/live-guide";
+import { MyModal } from "@/components/utils/my-dialog";
 
-const LiveGuideForm = () => {
+const LiveGuideForm = ({ userId }: { userId: string }) => {
   const form = useForm<any>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,6 +64,8 @@ const LiveGuideForm = () => {
   ];
 
   const { errors } = form.formState;
+  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
+  const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null
   );
@@ -190,12 +193,21 @@ const LiveGuideForm = () => {
       .map((p: any) => `${p.location.lat},${p.location.lng}`)
       .join("|");
 
-    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&waypoints=${waypointsStr}&travelmode=driving`;
-
-    console.log("Opening Route:", googleMapsUrl);
-    // Make a modal window about redirection
-    window.open(googleMapsUrl, "_blank");
-    toast.success("Route generated! Opening Google Maps...");
+    const generatedUrl = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&waypoints=${waypointsStr}&travelmode=driving`;
+    setGoogleMapsUrl(generatedUrl);
+    const res = await saveLiveGuideRoute(userId, {
+      location: data.location,
+      coords: coords,
+      radiusNumber: Number(data.radius.split(" ")[0]) * 1000,
+      selectedPlaces: sortedPlaces,
+      mapLink: generatedUrl,
+    });
+    if (res.success) {
+      toast.success("Route created successfully!");
+      setOpen(true);
+    } else {
+      toast.error(res.error || "Failed to save the route.");
+    }
   };
 
   const togglePlaceById = (place: any, field: any) => {
@@ -457,6 +469,7 @@ const LiveGuideForm = () => {
           </Form>
         </CardContent>
       </Card>
+      <MyModal open={open} setOpen={setOpen} googleMapsUrl={googleMapsUrl} />
     </div>
   );
 };

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/sidebar";
 import { ThemeProvider } from "@/components/utils/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
-import {Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,9 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${inter.variable} font-sans antialiased`}
-      >
+      <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -35,9 +33,15 @@ export default function RootLayout({
         >
           <SidebarProvider>
             <AppSidebar />
-            <main className="w-full ">{children}</main>
+            <main className="w-full min-h-screen">
+              <div className="p-4 border-b flex items-center gap-2 md:hidden">
+                <SidebarTrigger />
+                <span className="font-semibold">My Dashboard</span>
+              </div>
+              <div className="flex-1 h-full overflow-auto">{children}</div>
+            </main>
           </SidebarProvider>
-          <Toaster/>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

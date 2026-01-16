@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
+import { useWatch } from "react-hook-form";
 
 import {
   Form,
@@ -40,21 +41,21 @@ const CreateNewTripForm = () => {
     resolver: zodResolver(insertTripSchema),
     defaultValues: {
       destination: "",
+      country: "",
       interests: [],
       budget: [BUDGET_RANGE[0], BUDGET_RANGE[1]],
     },
   });
-
-  const startDate = form.watch("startDate");
-  const endDate = form.watch("endDate");
-  const destination = form.watch("destination");
+  const startDate = useWatch({ control: form.control, name: "startDate" });
+  const endDate = useWatch({ control: form.control, name: "endDate" });
+  const destination = useWatch({ control: form.control, name: "destination" });
   const onError = (errors: any) => {
     toast.error("Please fill in all required fields correctly.");
   };
 
   const [isPending, startTransition] = useTransition();
-  const onSubmit =  (data: z.infer<typeof insertTripSchema>) => {
-   startTransition(async () => {
+  const onSubmit = (data: z.infer<typeof insertTripSchema>) => {
+    startTransition(async () => {
       const res = await insertTrip(data);
 
       if (!res.success) {
@@ -63,7 +64,7 @@ const CreateNewTripForm = () => {
       }
 
       toast.success(res.message);
-       form.reset(); 
+      form.reset();
       redirect(`/trip/${res.tripId}`);
     });
   };
@@ -88,6 +89,22 @@ const CreateNewTripForm = () => {
                 </FormLabel>
                 <FormControl>
                   <Input placeholder="Destination" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="country"
+            render={({ field }) => (
+              <FormItem className="main-card">
+                <FormLabel className="text-[20px]">
+                  Please enter the country you are visiting
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Country" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -253,7 +270,7 @@ const CreateNewTripForm = () => {
               className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 "
               disabled={isPending}
             >
-              Generate a trip to{" "}
+              {isPending ? "Generating a trip...." : "Generate trip"}  to{" "}
               {destination ? destination : "your destination"}
             </Button>
           </div>

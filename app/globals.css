@@ -230,19 +230,34 @@
 }
 @layer components {
   .main-card {
-    @apply p-6 border-2 shadow-xl rounded-2xl w-full transition-all duration-300;
+    /* Базовые стили: добавил ease-out для плавности */
+    @apply p-6 border-2 shadow-md rounded-2xl w-full transition-all duration-300 ease-out;
 
     background: var(--hero-card-bg);
     border-color: var(--hero-card-border);
+  }
 
-    &:hover {
-      @media (hover: hover) {
-        border-color: oklch(1 0 0 / 0.25);
-        box-shadow: 0 0 20px -5px oklch(1 0 0 / 0.1);
-      }
+  /* LIGHT MODE hover */
+  :root .main-card:hover {
+    @media (hover: hover) {
+      
+      border-color: var(--ring); 
+      
+      box-shadow: 0 20px 40px -10px oklch(0.2 0.015 286 / 0.15);
+    }
+  }
+
+  /* DARK MODE hover */
+  .dark .main-card:hover {
+    @media (hover: hover) {
+      
+      border-color: oklch(1 0 0 / 0.4);
+      
+      box-shadow: 0 0 20px -5px oklch(1 0 0 / 0.1);
     }
   }
 }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

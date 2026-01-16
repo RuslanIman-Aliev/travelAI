@@ -3,10 +3,15 @@ import { StatsCard } from "@/components/home/statsCard";
 import UserTrips from "@/components/home/user-trips";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { getUserStatictics } from "@/lib/actions/trip.actions";
 import Link from "next/link";
 
 export default async function Home() {
   const session = await auth();
+  let statistics;
+  if(session?.user?.id){
+    statistics = await getUserStatictics(session.user.id);
+  }
   return (
     <div className="m-10">
       <Card className="w-auto mt-10 main-card">
@@ -19,23 +24,18 @@ export default async function Home() {
           </p>
         </CardContent>
         <CardFooter className="flex gap-3">
-          <Button className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold">
+          <Button className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold" asChild>
             <Link href={"/new-trip"}>Start Planning</Link>
           </Button>
 
-          <Button
-            variant="outline"
-            className="border-slate-600 text-foreground hover:bg-slate-800 hover:text-white bg-transparent"
-          >
-            <Link href={""}>View Tutorial</Link>
-          </Button>
+         
         </CardFooter>
       </Card>
 
       <div className="flex w-full gap-6 mt-10">
-        <StatsCard title="Trips Planned" value={24} />
-        <StatsCard title="Countries" value={12} />
-        <StatsCard title="Destinations" value={8} />
+        <StatsCard title="Trips Planned" value={statistics?.tripsCount || 0} />
+        <StatsCard title="Countries" value={statistics?.countries || 0} />
+        <StatsCard title="Destinations" value={statistics?.cities || 0} />
       </div>
 
       {session?.user?.id && (

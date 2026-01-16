@@ -25,6 +25,7 @@ export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
         startDate: tripData.startDate,
         endDate: tripData.endDate,
         interests: tripData.interests,
+        country: tripData.country,
         budget,
         daysCount,
         userId: session.user.id,
@@ -97,6 +98,43 @@ export async function getUserTrips(userId:string,status?:string, isGenerated?:bo
     return { success: true, trips };
   }
   catch (error) {
+    return {
+      success: false,
+      message: formatError(error) || "An unexpected error occurred",
+    };
+  }
+}
+
+export async function getUserStatictics(userId:string) {
+  try {
+    const tripsCount = await prisma.trip.count({
+      where: {
+        userId: userId,
+        aiGenerated: true,
+      },
+    });
+    const countries = await prisma.trip.findMany({
+      where: {
+        userId: userId,
+        aiGenerated: true,
+      },
+      distinct: ["country"],
+      select: {
+        country: true,
+      },
+    });
+    const cities = await prisma.trip.findMany({
+      where: {
+        userId: userId,
+        aiGenerated: true,
+      },
+      distinct: ["destination"],
+      select: {
+        destination: true,
+      },
+    });
+    return { success: true, tripsCount, countries: countries.length, cities: cities.length };
+  } catch (error) {
     return {
       success: false,
       message: formatError(error) || "An unexpected error occurred",

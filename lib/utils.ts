@@ -51,6 +51,7 @@ Create a detailed, day-by-day travel itinerary for the following trip:
 
 TRIP DETAILS:
 - **Destination**: ${trip.destination}
+- **Country**: ${trip.country}
 - **Dates**: ${formattedDates} (${trip.daysCount} days)
 - **Traveler Interests**: ${
     trip.interests?.join(", ") || "General sightseeing, Local culture"

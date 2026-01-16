@@ -21,14 +21,13 @@ const UserTrips = async ({
     return <></>;
   }
   const tripList = trips.trips;
-  console.log(trips);
   return (
     <>
       <div>
         {tripList?.length === 0 && <p>You dont create any trips yet.</p>}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 3xl:grid-cols-3 gap-4 w-full ">
+      <div className="grid grid-cols-1  lg:grid-cols-2 3xl:grid-cols-3 gap-4 w-full ">
         {tripList?.map((trip) => (
           <Card key={trip.id} className="p-0 pb-2  main-card">
            <CardHeader className="p-0">
