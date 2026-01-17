@@ -1,9 +1,9 @@
+import AppSidebar from "@/components/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/utils/theme-provider";
 import type { Metadata } from "next";
 import "./globals.css";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import AppSidebar from "@/components/sidebar";
-import { ThemeProvider } from "@/components/utils/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
 
 import { Inter } from "next/font/google";
 

@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
 import { useTheme } from "next-themes";
 import Image from "next/image";
+import * as React from "react";
 
 export function SidebarLogo() {
   const { resolvedTheme } = useTheme();

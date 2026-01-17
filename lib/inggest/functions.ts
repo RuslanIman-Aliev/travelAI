@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/prisma";
-import { inngest } from "./client";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getAIPrompt, getPhotoByDestination } from "../utils";
 import { NonRetriableError } from "inngest";
+import { getAIPrompt, getPhotoByDestination } from "../utils";
+import { inngest } from "./client";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -46,13 +46,8 @@ export const generateTripFunction = inngest.createFunction(
         const text = response.text();
         const json = JSON.parse(text);
 
-        console.log("---------------- AI RESPONSE ----------------");
-        console.log(JSON.stringify(json, null, 2));
-        console.log("---------------------------------------------");
-
         return json;
       } catch (error) {
-        console.error("AI Generation Failed:", error);
         throw new Error("Failed to generate valid JSON from AI");
       }
     });

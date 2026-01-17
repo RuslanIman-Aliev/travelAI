@@ -1,9 +1,9 @@
 import { getUserTrips } from "@/lib/actions/trip.actions";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import Image from "next/image";
+import Link from "next/link";
 import Badges from "../trip/badges";
 import { Button } from "../ui/button";
-import Link from "next/link";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 
 const UserTrips = async ({
   userId,

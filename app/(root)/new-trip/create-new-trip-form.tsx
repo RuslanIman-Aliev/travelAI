@@ -3,12 +3,19 @@
 
 import { insertTripSchema } from "@/lib/validators";
 import { BUDGET_RANGE, INTERESTS_LIST } from "@/lib/variables";
-import { format } from "date-fns";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { useForm, useWatch } from "react-hook-form";
 import z from "zod";
-import { useWatch } from "react-hook-form";
 
+import { insertTrip } from "@/lib/actions/trip.actions";
+import { cn } from "@/lib/utils";
+import { ArrowRightLeft, CalendarIcon } from "lucide-react";
+import { redirect } from "next/navigation";
+import { useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "../../../components/ui/button";
+import { Calendar } from "../../../components/ui/calendar";
 import {
   Form,
   FormControl,
@@ -23,19 +30,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../../../components/ui/popover";
-import { cn } from "@/lib/utils";
-import { CalendarIcon, ArrowRightLeft } from "lucide-react";
-import { Button } from "../../../components/ui/button";
-import { Calendar } from "../../../components/ui/calendar";
+import { Slider } from "../../../components/ui/slider";
 import {
   ToggleGroup,
   ToggleGroupItem,
 } from "../../../components/ui/toggle-group";
-import { Slider } from "../../../components/ui/slider";
-import { insertTrip } from "@/lib/actions/trip.actions";
-import { toast } from "sonner";
-import { redirect } from "next/navigation";
-import { useTransition } from "react";
 const CreateNewTripForm = () => {
   const form = useForm<z.infer<typeof insertTripSchema>>({
     resolver: zodResolver(insertTripSchema),

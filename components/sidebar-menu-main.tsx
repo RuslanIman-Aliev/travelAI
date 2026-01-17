@@ -1,16 +1,16 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import Link from "next/link";
-import { 
-  AudioWaveform, 
-  LayoutDashboard,
+import {
+  AudioWaveform,
   CirclePlay,
-  Sun,
-  Moon
-} from "lucide-react"; 
+  LayoutDashboard,
+  Moon,
+  Sun
+} from "lucide-react";
 import { useTheme } from "next-themes";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const mainItems = [

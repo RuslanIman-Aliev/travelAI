@@ -1,6 +1,6 @@
+import { type Trip } from "@prisma/client";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { type Trip } from "@prisma/client";
 import { PEXELS_API_KEY } from "./variables";
 
 export function cn(...inputs: ClassValue[]) {

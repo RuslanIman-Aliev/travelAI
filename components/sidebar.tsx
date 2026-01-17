@@ -1,26 +1,26 @@
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarGroup,
-  SidebarGroupContent,
-} from "@/components/ui/sidebar";
+import { auth } from "@/auth";
+import { SidebarLogo } from "@/components/sidebar-logo";
+import { SidebarMenuMain } from "@/components/sidebar-menu-main";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { auth } from "@/auth";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 import { loginWithGoogle, logout } from "@/lib/actions/auth.actions";
-import { SidebarLogo } from "@/components/sidebar-logo";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SidebarMenuMain } from "@/components/sidebar-menu-main"; 
 
 const AppSidebar = async () => {
   const session = await auth();
@@ -32,7 +32,6 @@ const AppSidebar = async () => {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Главное меню: Dashboard, New Trip, Live Guide + Theme Toggle */}
         <SidebarGroup>
           <SidebarGroupContent>
              <SidebarMenuMain />
