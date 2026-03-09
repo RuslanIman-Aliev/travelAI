@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { insertTripSchema } from "@/lib/validators";
 import { BUDGET_RANGE, INTERESTS_LIST } from "@/lib/variables";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, FieldErrors } from "react-hook-form";
 import z from "zod";
 
 import { insertTrip } from "@/lib/actions/trip.actions";
@@ -35,6 +34,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "../../../components/ui/toggle-group";
+
 const CreateNewTripForm = () => {
   const form = useForm<z.infer<typeof insertTripSchema>>({
     resolver: zodResolver(insertTripSchema),
@@ -48,7 +48,7 @@ const CreateNewTripForm = () => {
   const startDate = useWatch({ control: form.control, name: "startDate" });
   const endDate = useWatch({ control: form.control, name: "endDate" });
   const destination = useWatch({ control: form.control, name: "destination" });
-  const onError = (errors: any) => {
+  const onError = (errors: FieldErrors<z.infer<typeof insertTripSchema>>) => {
     toast.error("Please fill in all required fields correctly.");
   };
 
@@ -125,7 +125,7 @@ const CreateNewTripForm = () => {
                       variant={"outline"}
                       className={cn(
                         "w-full justify-start text-left font-normal border-slate-600 hover:border-cyan-400 transition-colors",
-                        !startDate && "text-muted-foreground"
+                        !startDate && "text-muted-foreground",
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -149,7 +149,7 @@ const CreateNewTripForm = () => {
                       variant={"outline"}
                       className={cn(
                         "w-full justify-start text-left font-normal border-slate-600 hover:border-cyan-400 transition-colors",
-                        !endDate && "text-muted-foreground"
+                        !endDate && "text-muted-foreground",
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -269,7 +269,7 @@ const CreateNewTripForm = () => {
               className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 max-sm:w-[90%] max-sm:text-wrap"
               disabled={isPending}
             >
-              {isPending ? "Generating a trip...." : "Generate trip"}  to{" "}
+              {isPending ? "Generating a trip...." : "Generate trip"} to{" "}
               {destination ? destination : "your destination"}
             </Button>
           </div>

@@ -34,7 +34,7 @@ const AppSidebar = async () => {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-             <SidebarMenuMain />
+            <SidebarMenuMain />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
@@ -44,8 +44,12 @@ const AppSidebar = async () => {
           <SidebarMenuItem>
             {!session?.user ? (
               <form action={loginWithGoogle} className="w-full">
-                <Button type="submit" variant="outline" className="w-full justify-start gap-2">
-                   <span>Sign in</span>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                >
+                  <span>Sign in</span>
                 </Button>
               </form>
             ) : (
@@ -60,12 +64,21 @@ const AppSidebar = async () => {
                       <AvatarFallback className="rounded-lg">U</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{session.user.name}</span>
-                      <span className="truncate text-xs">{session.user.email}</span>
+                      <span className="truncate font-semibold">
+                        {session.user.name}
+                      </span>
+                      <span className="truncate text-xs">
+                        {session.user.email}
+                      </span>
                     </div>
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-56 rounded-lg" side="bottom" align="end" sideOffset={4}>
+                <DropdownMenuContent
+                  className="min-w-56 rounded-lg"
+                  side="bottom"
+                  align="end"
+                  sideOffset={4}
+                >
                   <form action={logout}>
                     <DropdownMenuItem asChild>
                       <button className="w-full flex items-center cursor-pointer text-red-600 hover:text-red-600 focus:text-red-600">

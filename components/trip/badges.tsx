@@ -1,8 +1,9 @@
 import { format } from "date-fns";
 import { Calendar, Wallet, MapPin } from "lucide-react";
 import { Button } from "../ui/button";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Badges = ({ trip }: { trip: any }) => {
+import { Trip } from "@prisma/client";
+
+const Badges = ({ trip }: { trip: Trip }) => {
   return (
     <>
       {/* Date Badge */}

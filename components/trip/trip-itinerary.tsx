@@ -1,11 +1,10 @@
+import { Activity } from "@prisma/client";
 import { ActivityCard } from "./activity-card";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const TripItinerary = ({ activities }: { activities: any[] }) => {
+const TripItinerary = ({ activities }: { activities: Activity[] }) => {
   return (
     <div className="w-full">
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {activities.map((activity: any, index) => {
+      {activities.map((activity: Activity, index) => {
         const isLeft = index % 2 === 0;
         return (
           <div key={activity.id} className="flex w-full flex-row max-[1300px]:flex-col">

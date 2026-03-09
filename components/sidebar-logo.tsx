@@ -22,13 +22,10 @@ export function SidebarLogo() {
   }
 
   const logoSrc =
-    resolvedTheme === "dark"
-      ? "/logo-dark.png"
-      : "/logo-light.jpg";
+    resolvedTheme === "dark" ? "/logo-dark.png" : "/logo-light.jpg";
 
   return (
     <div className="flex flex-col items-center gap-4 mb-10 px-2 mt-8 transition-all duration-500 ease-in-out">
-      
       <div className="relative w-16 h-16 shrink-0 overflow-hidden rounded-2xl shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-white/10 ring-1 ring-white/20">
         <Image
           src={logoSrc}

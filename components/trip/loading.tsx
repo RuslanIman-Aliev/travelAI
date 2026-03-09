@@ -21,8 +21,8 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
   const [error, setError] = useState<string | null>(null);
 
   const [shouldPoll, setShouldPoll] = useState(false);
-  
- useEffect(() => {
+
+  useEffect(() => {
     if (isFetched.current) return;
     isFetched.current = true;
 
@@ -32,7 +32,7 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
           method: "POST",
           body: JSON.stringify({ tripId: tripId }),
         });
-        
+
         if (res.ok) {
           toast.success("Trip generation started!");
           setShouldPoll(true);
@@ -41,7 +41,7 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
           setError(data.message || "Failed to generate trip");
           toast.error("Failed to start trip generation.");
         }
-      } catch (error) {
+      } catch {
         setError("Network connection error. Please try again.");
       }
     };
@@ -53,10 +53,10 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
     if (!shouldPoll) return;
 
     const interval = setInterval(() => {
-      router.refresh(); 
-    }, 3000); 
+      router.refresh();
+    }, 3000);
 
-    return () => clearInterval(interval); 
+    return () => clearInterval(interval);
   }, [shouldPoll, router]);
 
   if (error) {
