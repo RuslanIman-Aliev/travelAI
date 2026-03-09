@@ -68,7 +68,7 @@ const TripPage = async (props: {
             </div>
           </div>
           <div className="flex justify-center p-10">
-            <Button className="w-full md:w-auto md:min-w-50" variant="outline">
+            <Button asChild className="w-full md:w-auto md:min-w-50" variant="outline">
               <Link href={"/"}>To all your trips</Link>
             </Button>
           </div>
