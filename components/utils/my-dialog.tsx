@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
+
 export function MyModal({
   open,
   setOpen,
@@ -19,7 +20,7 @@ export function MyModal({
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   googleMapsUrl: string;
 }) {
-  const router = useRouter(); 
+  const router = useRouter();
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-106.25">
@@ -46,8 +47,8 @@ export function MyModal({
               href={googleMapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={()=>{
-                setOpen(false)
+              onClick={() => {
+                setOpen(false);
                 router.push("/");
               }}
             >

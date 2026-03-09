@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NonRetriableError } from "inngest";
 import { getAIPrompt, getPhotoByDestination } from "../utils";
 import { inngest } from "./client";
+import { Activity } from "@prisma/client";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 

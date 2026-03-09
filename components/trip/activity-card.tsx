@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import {
   Card,
   CardContent,
@@ -7,7 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-export const ActivityCard = ({ activity }: { activity: any }) => {
+import { Activity } from "@prisma/client";
+export const ActivityCard = ({ activity }: { activity: Activity }) => {
   return (
     <>
       <Card key={activity.id} className="mb-4 p-4 w-full bg-hero border-hero-border shadow-xl">
