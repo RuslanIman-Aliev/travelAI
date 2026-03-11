@@ -83,21 +83,24 @@ export async function getTripById(tripId: string) {
   }
 }
 
-export async function getUserTrips(userId:string,status?:string, isGenerated?:boolean) {
+export async function getUserTrips(
+  userId: string,
+  status?: string,
+  isGenerated?: boolean,
+) {
   try {
     const trips = await prisma.trip.findMany({
       where: {
         userId: userId,
         status: status ? status : undefined,
-        aiGenerated:isGenerated,
+        aiGenerated: isGenerated,
       },
       orderBy: {
         createdAt: "desc",
       },
     });
     return { success: true, trips };
-  }
-  catch (error) {
+  } catch (error) {
     return {
       success: false,
       message: formatError(error) || "An unexpected error occurred",
@@ -105,7 +108,7 @@ export async function getUserTrips(userId:string,status?:string, isGenerated?:bo
   }
 }
 
-export async function getUserStatictics(userId:string) {
+export async function getUserStatictics(userId: string) {
   try {
     const tripsCount = await prisma.trip.count({
       where: {
@@ -133,7 +136,12 @@ export async function getUserStatictics(userId:string) {
         destination: true,
       },
     });
-    return { success: true, tripsCount, countries: countries.length, cities: cities.length };
+    return {
+      success: true,
+      tripsCount,
+      countries: countries.length,
+      cities: cities.length,
+    };
   } catch (error) {
     return {
       success: false,

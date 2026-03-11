@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 "use server";
 
 import { prisma } from "@/prisma";
 import { formatError } from "../utils";
+import { GooglePlace, LiveRouteData } from "../types";
 
-export async function saveLiveGuideRoute(userId: string, data: any) {
+export async function saveLiveGuideRoute(userId: string, data: LiveRouteData) {
   try {
     const { location, coords, radiusNumber, selectedPlaces, mapLink } = data;
     await prisma.liveGuide.create({
@@ -17,7 +16,7 @@ export async function saveLiveGuideRoute(userId: string, data: any) {
         mapLink: mapLink,
         radiusMeters: radiusNumber,
         places: {
-          create: selectedPlaces.map((place: any, index: number) => ({
+          create: selectedPlaces.map((place: GooglePlace, index: number) => ({
             googlePlaceId: place.id,
             name: place.name,
             address: place.address,
