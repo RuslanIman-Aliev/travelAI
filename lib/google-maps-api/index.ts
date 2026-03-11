@@ -2,7 +2,7 @@
 
 import { GooglePlaceForLive, MappedPlace } from "../types";
 
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAP_API;
+const API_KEY = process.env.GOOGLE_MAP_API;
 
 export async function getGoogleNearbyPlaces(
   lat: number,

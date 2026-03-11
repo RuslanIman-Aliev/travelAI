@@ -17,7 +17,7 @@ export interface GooglePlace {
     lat: number;
     lng: number;
   };
-  distance: number;
+  distance?: number;
 }
 
 export interface LiveRouteData {
@@ -51,7 +51,7 @@ export interface MappedPlace {
   category: string;
   rating: number;
   userRatingCount: number;
-  distance: number;
+  distance?: number;
   location: {
     lat: number;
     lng: number;
