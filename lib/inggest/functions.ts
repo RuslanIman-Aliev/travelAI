@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/prisma";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NonRetriableError } from "inngest";
 import { getAIPrompt, getPhotoByDestination } from "../utils";
 import { inngest } from "./client";
-import { Activity } from "@prisma/client";
+import { Activity} from "@prisma/client";
+import { AIDay } from "../types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -70,37 +70,39 @@ export const generateTripFunction = inngest.createFunction(
       const itinerary = aiResult.itinerary;
 
       await prisma.$transaction(
-        itinerary.map((day: any) =>
+        itinerary.map((day: AIDay) =>
           prisma.day.create({
             data: {
               tripId: tripId,
-              dayNumber: day.day,
+              dayNumber: day.dayNumber,
               date: new Date(day.date),
               summary: day.summary,
 
               activities: {
-                create: day.activities.map((activity: any, index: number) => ({
-                  order: index + 1,
-                  time: activity.time,
+                create: day.activities.map(
+                  (activity: Activity, index: number) => ({
+                    order: index + 1,
+                    time: activity.time,
 
-                  title: activity.place_name,
-                  placeName: activity.place_name,
+                    title: activity.title ?? activity.placeName ?? "Activity",
+                    placeName: activity.placeName,
 
-                  description: activity.description,
-                  placeType: activity.category,
-                  estimatedCost: activity.ticket_pricing,
+                    description: activity.description,
+                    placeType: activity.placeType,
+                    estimatedCost: activity.estimatedCost,
 
-                  latitude: activity.geo_coordinates?.lat
-                    ? Number(activity.geo_coordinates.lat)
-                    : null,
-                  longitude: activity.geo_coordinates?.lng
-                    ? Number(activity.geo_coordinates.lng)
-                    : null,
-                })),
+                    latitude: activity.latitude
+                      ? Number(activity.latitude)
+                      : null,
+                    longitude: activity.longitude
+                      ? Number(activity.longitude)
+                      : null,
+                  }),
+                ),
               },
             },
-          })
-        )
+          }),
+        ),
       );
       const destinationImage = await getPhotoByDestination(trip.destination);
       await prisma.trip.update({
@@ -114,5 +116,5 @@ export const generateTripFunction = inngest.createFunction(
     });
 
     return { success: true };
-  }
+  },
 );

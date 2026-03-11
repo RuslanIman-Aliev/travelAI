@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +25,7 @@ import { MyModal } from "@/components/utils/my-dialog";
 import { saveLiveGuideRoute } from "@/lib/actions/live-guide.actions";
 import { getAddressFromCoordinates } from "@/lib/actions/locations.actions";
 import { getGoogleNearbyPlaces } from "@/lib/google-maps-api";
+import { GooglePlace, LiveGuideFormValues, MappedPlace } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formSchema } from "@/lib/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,11 +40,11 @@ import {
   Utensils,
 } from "lucide-react";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, ControllerRenderProps, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 const LiveGuideForm = ({ userId }: { userId: string }) => {
-  const form = useForm<any>({
+  const form = useForm<LiveGuideFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       location: "",
@@ -68,9 +68,9 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
   const [googleMapsUrl, setGoogleMapsUrl] = useState("");
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    null
+    null,
   );
-  const [availalablePlaces, setAvailalablePlaces] = useState<any[]>([]);
+  const [availalablePlaces, setAvailalablePlaces] = useState<MappedPlace[]>([]);
   const [isPending, setIsPending] = useState(false);
 
   const handleUserLocation = async () => {
@@ -112,7 +112,7 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
       (error) => {
         console.error("Error obtaining location:", error);
         setIsPending(false);
-      }
+      },
     );
   };
 
@@ -150,11 +150,11 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
     const places = await getGoogleNearbyPlaces(
       coords.lat,
       coords.lng,
-      radiusNumber
+      radiusNumber,
     );
     if (places.length === 0) {
       toast.error("No places found in the specified radius.");
-      form.setError("places", {
+      form.setError("selectedPlaces", {
         type: "manual",
         message: "Radius is required.",
       });
@@ -164,9 +164,8 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
     console.log("Places found:", places);
   };
 
-  const onSubmit = async (data: any) => {
-    const selected = data.selectedPlaces;
-
+  const onSubmit = async (data: LiveGuideFormValues) => {
+    const selected = data.selectedPlaces as MappedPlace[];
     // 1. Validation
     if (selected.length < 1 || selected.length > 10) {
       toast.error("Please select between 1 and 10 places.");
@@ -177,9 +176,11 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
       return;
     }
 
-    const sortedPlaces = [...selected].sort(
-      (a: any, b: any) => a.distance - b.distance
-    );
+    const sortedPlaces = [...selected].sort((a, b) => {
+      const distA = a.distance ?? 0;
+      const distB = b.distance ?? 0;
+      return distA - distB;
+    });
 
     const lastPlace = sortedPlaces[sortedPlaces.length - 1];
     const waypoints = sortedPlaces.slice(0, sortedPlaces.length - 1);
@@ -188,7 +189,7 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
     const destStr = `${lastPlace.location.lat},${lastPlace.location.lng}`;
 
     const waypointsStr = waypoints
-      .map((p: any) => `${p.location.lat},${p.location.lng}`)
+      .map((p) => `${p.location.lat},${p.location.lng}`)
       .join("|");
 
     const generatedUrl = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&waypoints=${waypointsStr}&travelmode=driving`;
@@ -208,14 +209,14 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
     }
   };
 
-  const togglePlaceById = (place: any, field: any) => {
+  const togglePlaceById = (place: MappedPlace, field: ControllerRenderProps<LiveGuideFormValues, "selectedPlaces">) => {
     const current = field.value ?? [];
-    const exists = current.some((p: any) => p.id === place.id);
+    const exists = current.some((p) => p.id === place.id);
 
     field.onChange(
       exists
-        ? current.filter((p: any) => p.id !== place.id)
-        : [...current, place]
+        ? current.filter((p) => p.id !== place.id)
+        : [...current, place],
     );
   };
 
@@ -346,88 +347,86 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
                       </div>
                       <div className="flex flex-col gap-2">
                         {availalablePlaces.map((place) => {
-  const isSelected = field.value?.some(
-    (item: any) => item.id === place.id
-  );
-  return (
-    <div
-      className={cn(
-        "flex items-start space-x-3 rounded-lg border p-3 shadow-sm main-card w-full", // Added w-full
-        "cursor-pointer transition-all duration-150 ease-out",
-        "hover:bg-accent/50 hover:scale-[1.01]",
-        "active:scale-[0.99]",
-        isSelected
-          ? "border-primary bg-primary/5"
-          : "border-gray-200"
-      )}
-      key={place.id}
-      onClick={() => togglePlaceById(place, field)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          togglePlaceById(place, field);
-        }
-      }}
-    >
-      {/* Checkbox: Prevent shrinking */}
-      <div
-        className={cn(
-          "h-4 w-4 rounded border flex items-center justify-center shrink-0 mt-1",
-          isSelected
-            ? "bg-primary border-primary"
-            : "border-muted"
-        )}
-      >
-        {isSelected && (
-          <Check className="h-3 w-3 text-white" />
-        )}
-      </div>
+                          const isSelected = field.value?.some(
+                            (item) => item.id === place.id,
+                          );
+                          return (
+                            <div
+                              className={cn(
+                                "flex items-start space-x-3 rounded-lg border p-3 shadow-sm main-card w-full", // Added w-full
+                                "cursor-pointer transition-all duration-150 ease-out",
+                                "hover:bg-accent/50 hover:scale-[1.01]",
+                                "active:scale-[0.99]",
+                                isSelected
+                                  ? "border-primary bg-primary/5"
+                                  : "border-gray-200",
+                              )}
+                              key={place.id}
+                              onClick={() => togglePlaceById(place, field)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  togglePlaceById(place, field);
+                                }
+                              }}
+                            >
+                              {/* Checkbox: Prevent shrinking */}
+                              <div
+                                className={cn(
+                                  "h-4 w-4 rounded border flex items-center justify-center shrink-0 mt-1",
+                                  isSelected
+                                    ? "bg-primary border-primary"
+                                    : "border-muted",
+                                )}
+                              >
+                                {isSelected && (
+                                  <Check className="h-3 w-3 text-white" />
+                                )}
+                              </div>
 
-      <div className="space-y-1 leading-none w-full min-w-0">
-        
-        {/* Row 1: Name and Badge */}
-        <div className="flex items-start justify-between gap-2">
-          
-          <div className="flex flex-col min-w-0 flex-1">
-            <FormLabel className="text-base font-semibold cursor-pointer truncate pr-1 text-wrap">
-              {place.name}
-            </FormLabel>
-            <span className="text-xs text-muted-foreground truncate font-normal text-wrap">
-              {place.address.split(",")[0]}{" "}
-              {place.distance &&
-                `• ${place.distance} km`}
-            </span>
-          </div>
+                              <div className="space-y-1 leading-none w-full min-w-0">
+                                {/* Row 1: Name and Badge */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <FormLabel className="text-base font-semibold cursor-pointer truncate pr-1 text-wrap">
+                                      {place.name}
+                                    </FormLabel>
+                                    <span className="text-xs text-muted-foreground truncate font-normal text-wrap">
+                                      {place.address.split(",")[0]}{" "}
+                                      {place.distance &&
+                                        `• ${place.distance} km`}
+                                    </span>
+                                  </div>
 
-          <Badge
-            variant="secondary"
-            className="text-xs font-normal shrink-0"
-          >
-            {place.category}
-          </Badge>
-        </div>
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs font-normal shrink-0"
+                                  >
+                                    {place.category}
+                                  </Badge>
+                                </div>
 
-        {/* Row 2: Rating and Details */}
-        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1.5">
-          <div className="flex items-center gap-1 text-amber-500 font-medium shrink-0">
-            <Star className="h-3.5 w-3.5 fill-current" />
-            <span>{place.rating}</span>
-            <span className="text-gray-400 font-normal">
-              ({place.userRatingCount || 0})
-            </span>
-          </div>
+                                {/* Row 2: Rating and Details */}
+                                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1.5">
+                                  <div className="flex items-center gap-1 text-amber-500 font-medium shrink-0">
+                                    <Star className="h-3.5 w-3.5 fill-current" />
+                                    <span>{place.rating}</span>
+                                    <span className="text-gray-400 font-normal">
+                                      ({place.userRatingCount || 0})
+                                    </span>
+                                  </div>
 
-          {place.distance && (
-            <div className="flex items-center gap-1 shrink-0">
-              <MapPin className="h-3.5 w-3.5" />
-              <span>{place.distance} km</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-})}
+                                  {place.distance && (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <MapPin className="h-3.5 w-3.5" />
+                                      <span>{place.distance} km</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </FormItem>
                   )}
@@ -443,12 +442,11 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
                   </div>
                   <ul className="mt-2 list-inside list-disc opacity-90">
                     {Object.entries(errors).map(
-                      ([key, error]: [string, any]) => (
+                      ([key, error]) => (
                         <li key={key}>
-                          {/* Display the message from the error object */}
                           {error.message}
                         </li>
-                      )
+                      ),
                     )}
                   </ul>
                 </div>

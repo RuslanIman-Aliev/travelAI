@@ -1,48 +1,40 @@
-import { type Trip } from "@prisma/client";
+import { Prisma, type Trip } from "@prisma/client";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { PEXELS_API_KEY } from "./variables";
+import { ZodError } from "zod";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function formatError(error: any) {
-  if (error.name === "ZodError") {
-    let issues = error.errors || error.issues || [];
-
-    if (issues.length === 0 && typeof error.message === "string") {
-      try {
-        const parsed = JSON.parse(error.message);
-        if (Array.isArray(parsed)) {
-          issues = parsed;
-        }
-      } catch {}
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fieldErrors = issues.map((e: any) => e.message);
-
-    if (fieldErrors.length > 0) {
-      return fieldErrors.join(". ");
-    }
-
-    return "Validation failed";
-  } else if (
-    error.name === "PrismaClientKnownRequestError" &&
-    error.code === "P2002"
-  ) {
-    const field = error.meta?.target ? error.meta.target[0] : "Field";
-    return `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
-  } else {
+export function formatError(error: unknown): string {
+  // 1. Handle Zod Errors
+  if (error instanceof ZodError) {
+    const fieldErrors = error.issues.map((issue) => issue.message);
+    return fieldErrors.length > 0
+      ? fieldErrors.join(". ")
+      : "Validation failed";
   }
+
+  // 2. Handle Prisma Errors
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      const meta = error.meta as { target?: string[] };
+      const field = meta?.target ? meta.target[0] : "Field";
+      return `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
+    }
+  }
+
+  if (error instanceof Error) return error.message;
+
+  return "An unexpected error occurred";
 }
 
 export function getAIPrompt({ trip }: { trip: Trip }) {
   // We format the dates nicely for the AI
   const formattedDates = `${new Date(
-    trip.startDate
+    trip.startDate,
   ).toDateString()} to ${new Date(trip.endDate).toDateString()}`;
 
   return `
@@ -90,26 +82,23 @@ CRITICAL INSTRUCTIONS:
    - If the input is gibberish (e.g., "sdfdsf"), a random string, or a place that does not exist:
      RETURN ONLY THIS JSON: { "error": "Location not found" }
 {
-  "trip_title": "A catchy name for this trip (e.g., 'Parisian Art & Food Escape')",
-  "currency": "The local currency code (e.g., EUR, USD, JPY)",
+  "title": "...",
+  "currency": "...",
   "itinerary": [
     {
-      "day": 1,
+      "dayNumber": 1,
       "date": "YYYY-MM-DD",
-      "theme": "A short 2-3 word theme for the day (e.g. 'Ancient History')",
-      "summary": "A 1-sentence summary of what makes this day special.",
+      "summary": "...",
       "activities": [
         {
-          "time": "HH:MM (24h format)",
-          "place_name": "Exact name of the place/restaurant",
-          "category": "One of: [Sightseeing, Food, Relax, Adventure, Shopping, Culture]",
+          "time": "HH:MM",
+          "title": "Exact name of the place", 
+          "placeName": "Exact name of the place", 
+          "placeType": One of: [Sightseeing, Food, Relax, Adventure, Shopping, Culture]
           "description": "Max 10 words. Keywords only.",
-          "geo_coordinates": {
-             "lat": "number (Must be exact latitude for this place)",
-             "lng": "number (Must be exact longitude for this place)"
-          },
+          "latitude": 0.0, (Must be exact latitude for this place) 
+          "longitude": 0.0, (Must be exact longitude for this place) 
           "ticket_pricing": "Estimated cost (e.g. 'Free' or '20 EUR')",
-          "rating": "Estimated rating 1-5"
         }
       ]
     }
@@ -120,9 +109,11 @@ CRITICAL INSTRUCTIONS:
 
 export async function getPhotoByDestination(destination: string) {
   try {
-    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(
-      destination
-    )}&per_page=1&orientation=landscape&size=large` || "https://images.pexels.com/photos/268455/pexels-photo-268455.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
+    const url =
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(
+        destination,
+      )}&per_page=1&orientation=landscape&size=large` ||
+      "https://images.pexels.com/photos/268455/pexels-photo-268455.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
 
     const response = await fetch(url, {
       headers: {

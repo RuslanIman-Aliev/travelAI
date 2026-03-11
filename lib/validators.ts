@@ -24,6 +24,7 @@ export const formSchema = z.object({
         name: z.string(),
         category: z.string(),
         rating: z.number(),
+        distance: z.number().optional(),
         userRatingCount: z.number(),
         location: z.object({
           lat: z.number(),
@@ -31,5 +32,6 @@ export const formSchema = z.object({
         }),
       })
     )
-    // .min(1, { message: "Select at least one place to visit" }),
+     .min(1, { message: "Select at least one place to visit" }),
 });
+
