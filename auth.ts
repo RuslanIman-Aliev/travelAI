@@ -1,5 +1,6 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
+import type { Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { cookies } from "next/headers";
@@ -66,8 +67,8 @@ export const handlers = nextAuth.handlers;
 export const signIn = nextAuth.signIn;
 export const signOut = nextAuth.signOut;
 
-export async function auth(...args: any[]) {
-  if (isTestAuthEnabled && args.length === 0) {
+export async function auth(): Promise<Session | null> {
+  if (isTestAuthEnabled) {
     const cookieStore = await cookies();
     const hasTestAuthCookie = cookieStore.get(E2E_COOKIE_NAME)?.value === "1";
 
@@ -93,9 +94,9 @@ export async function auth(...args: any[]) {
           image: user.image,
         },
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      };
+      } as Session;
     }
   }
 
-  return (authBase as (...innerArgs: any[]) => Promise<unknown>)(...args);
+  return (await authBase()) as Session | null;
 }
