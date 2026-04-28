@@ -3,8 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NonRetriableError } from "inngest";
 import { getAIPrompt, getPhotoByDestination } from "../utils";
 import { inngest } from "./client";
-import { Activity} from "@prisma/client";
-import { AIDay } from "../types";
+import { AIDay, AIActivity } from "../types";
+import { aiTripResponseSchema } from "../validators";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -15,9 +15,32 @@ const model = genAI.getGenerativeModel({
   },
 });
 
+const toNumberOrNull = (value?: string | number | null) => {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const isValidCoordinate = (lat: number, lng: number) =>
+  lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+
+const normalizeCost = (activity: AIActivity) => {
+  const raw = activity.estimatedCost ?? activity.ticket_pricing;
+  if (!raw) return "N/A";
+
+  const trimmed = raw.trim();
+  if (!trimmed) return "N/A";
+
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("free") || lower.includes("no cost")) return "Free";
+  return trimmed;
+};
+
 export const generateTripFunction = inngest.createFunction(
-  { id: "generate-trip-itinerary" },
-  { event: "trip.generate" },
+  { 
+    id: "generate-trip-itinerary",
+    triggers: [{ event: "trip.generate" }] 
+  },
   async ({ event, step }) => {
     const { tripId } = event.data;
 
@@ -47,13 +70,23 @@ export const generateTripFunction = inngest.createFunction(
         const text = response.text();
         const json = JSON.parse(text);
 
-        return json;
-      } catch (error) {
+        if (typeof json?.error === "string") {
+          return { error: json.error };
+        }
+
+        const parsed = aiTripResponseSchema.safeParse(json);
+
+        if (!parsed.success) {
+          throw new Error("AI response did not match itinerary schema");
+        }
+
+        return parsed.data;
+      } catch {
         throw new Error("Failed to generate valid JSON from AI");
       }
     });
 
-    if (aiResult.error) {
+    if ("error" in aiResult) {
       await step.run("handle-invalid-location", async () => {
         await prisma.trip.update({
           where: { id: tripId },
@@ -66,6 +99,7 @@ export const generateTripFunction = inngest.createFunction(
 
       throw new NonRetriableError(`Invalid Location: ${aiResult.error}`);
     }
+
     await step.run("save-itinerary", async () => {
       const itinerary = aiResult.itinerary;
 
@@ -80,23 +114,33 @@ export const generateTripFunction = inngest.createFunction(
 
               activities: {
                 create: day.activities.map(
-                  (activity: Activity, index: number) => ({
+                  (activity: AIActivity, index: number) => ({
                     order: index + 1,
                     time: activity.time,
 
-                    title: activity.title ?? activity.placeName ?? "Activity",
-                    placeName: activity.placeName,
+                    title:
+                      activity.title?.trim() ||
+                      activity.placeName?.trim() ||
+                      "Activity",
+                    placeName:
+                      activity.placeName?.trim() || activity.title?.trim(),
 
                     description: activity.description,
                     placeType: activity.placeType,
-                    estimatedCost: activity.estimatedCost,
+                    estimatedCost: normalizeCost(activity),
 
-                    latitude: activity.latitude
-                      ? Number(activity.latitude)
-                      : null,
-                    longitude: activity.longitude
-                      ? Number(activity.longitude)
-                      : null,
+                    latitude: (() => {
+                      const lat = toNumberOrNull(activity.latitude);
+                      const lng = toNumberOrNull(activity.longitude);
+                      if (lat == null || lng == null) return null;
+                      return isValidCoordinate(lat, lng) ? lat : null;
+                    })(),
+                    longitude: (() => {
+                      const lat = toNumberOrNull(activity.latitude);
+                      const lng = toNumberOrNull(activity.longitude);
+                      if (lat == null || lng == null) return null;
+                      return isValidCoordinate(lat, lng) ? lng : null;
+                    })(),
                   }),
                 ),
               },

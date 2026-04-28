@@ -1,9 +1,9 @@
-import { Activity, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { formSchema } from "./validators";
 import z from "zod";
 
 export type DayWithActivities = Prisma.DayGetPayload<{
-  include: { activities: true }
+  include: { activities: true };
 }>;
 
 export interface GooglePlace {
@@ -27,7 +27,6 @@ export interface LiveRouteData {
   selectedPlaces: GooglePlace[];
   mapLink: string;
 }
-
 
 export interface GooglePlaceForLive {
   id: string;
@@ -60,9 +59,21 @@ export interface MappedPlace {
 
 export type LiveGuideFormValues = z.infer<typeof formSchema>;
 
+export interface AIActivity {
+  time?: string;
+  title?: string;
+  placeName?: string;
+  placeType?: string;
+  description?: string;
+  latitude?: number | string;
+  longitude?: number | string;
+  estimatedCost?: string;
+  ticket_pricing?: string;
+}
+
 export interface AIDay {
   dayNumber: number;
   date: string;
   summary: string;
-  activities: Activity[]; 
+  activities: AIActivity[];
 }

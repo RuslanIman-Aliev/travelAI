@@ -30,8 +30,41 @@ export const formSchema = z.object({
           lat: z.number(),
           lng: z.number(),
         }),
-      })
+      }),
     )
-     .min(1, { message: "Select at least one place to visit" }),
+    .min(1, { message: "Select at least one place to visit" }),
 });
 
+const aiActivitySchema = z.object({
+  time: z.string().min(1),
+  title: z.string().optional(),
+  placeName: z.string().optional(),
+  placeType: z.enum([
+    "Sightseeing",
+    "Food",
+    "Relax",
+    "Adventure",
+    "Shopping",
+    "Culture",
+  ]),
+  description: z.string().min(1),
+  latitude: z.union([z.number(), z.string()]),
+  longitude: z.union([z.number(), z.string()]),
+  estimatedCost: z.string().min(1).optional(),
+  ticket_pricing: z.string().min(1).optional(),
+});
+
+export const aiTripResponseSchema = z.object({
+  title: z.string().optional(),
+  currency: z.string().optional(),
+  itinerary: z
+    .array(
+      z.object({
+        dayNumber: z.number().int().min(1),
+        date: z.string().min(1),
+        summary: z.string().optional().default(""),
+        activities: z.array(aiActivitySchema).min(1),
+      }),
+    )
+    .min(1),
+});
