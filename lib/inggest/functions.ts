@@ -37,8 +37,10 @@ const normalizeCost = (activity: AIActivity) => {
 };
 
 export const generateTripFunction = inngest.createFunction(
-  { id: "generate-trip-itinerary" },
-  { event: "trip.generate" },
+  { 
+    id: "generate-trip-itinerary",
+    triggers: [{ event: "trip.generate" }] 
+  },
   async ({ event, step }) => {
     const { tripId } = event.data;
 
