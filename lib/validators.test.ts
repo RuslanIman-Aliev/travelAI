@@ -1,4 +1,8 @@
-import { formSchema, insertTripSchema } from "@/lib/validators";
+import {
+  aiTripResponseSchema,
+  formSchema,
+  insertTripSchema,
+} from "@/lib/validators";
 
 describe("insertTripSchema", () => {
   it("accepts valid trip payload", () => {
@@ -95,5 +99,74 @@ describe("formSchema", () => {
         "Select at least one place to visit",
       );
     }
+  });
+});
+
+describe("aiTripResponseSchema", () => {
+  const validPayload = {
+    title: "Paris in 2 days",
+    currency: "EUR",
+    itinerary: [
+      {
+        dayNumber: 1,
+        date: "2026-06-10",
+        summary: "City center highlights",
+        activities: [
+          {
+            time: "09:00",
+            title: "Louvre Museum",
+            placeName: "Louvre Museum",
+            placeType: "Culture",
+            description: "Art masterpieces and iconic exhibits",
+            latitude: 48.8606,
+            longitude: 2.3376,
+            estimatedCost: "22 EUR",
+          },
+        ],
+      },
+    ],
+  };
+
+  it("accepts valid AI trip payload", () => {
+    const result = aiTripResponseSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects unknown place type", () => {
+    const result = aiTripResponseSchema.safeParse({
+      ...validPayload,
+      itinerary: [
+        {
+          ...validPayload.itinerary[0],
+          activities: [
+            {
+              ...validPayload.itinerary[0].activities[0],
+              placeType: "Nightlife",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("requires at least one itinerary day and one activity", () => {
+    const noDays = aiTripResponseSchema.safeParse({
+      ...validPayload,
+      itinerary: [],
+    });
+    expect(noDays.success).toBe(false);
+
+    const noActivities = aiTripResponseSchema.safeParse({
+      ...validPayload,
+      itinerary: [
+        {
+          ...validPayload.itinerary[0],
+          activities: [],
+        },
+      ],
+    });
+    expect(noActivities.success).toBe(false);
   });
 });

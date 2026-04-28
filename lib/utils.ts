@@ -60,24 +60,30 @@ CRITICAL INSTRUCTIONS:
    - If the budget is HIGH: Suggest fine dining, private tours, and exclusive experiences.
    - **Important**: The activities suggested must NOT exceed this total budget when summed up.
 
-2. **Realism**: 
+2. **Cost Field Required**:
+  - Every activity MUST include "estimatedCost".
+  - Use "Free" when there is no cost.
+  - Otherwise use a short string with amount and currency (e.g., "20 EUR").
+  - Do not omit or leave "estimatedCost" empty.
+
+3. **Realism**: 
    - Group activities geographically to minimize travel time.
    - Include lunch and dinner stops in logical locations.
    - Use REAL, EXISTING places.
 
-3. **Response Format**: 
+4. **Response Format**: 
    - You must output ONLY valid JSON. 
-   - Do not include markdown code blocks (like \`\`\`json). 
+    - Do not include markdown code blocks (like JSON fenced blocks). 
    - Do not include introductory text.
 
-4. **Geolocation Accuracy**:
+5. **Geolocation Accuracy**:
    - Ensure all GPS coordinates ('lat', 'lng') are ACCURATE and located specifically within **${
      trip.destination
    }**.
    - Do NOT guess coordinates. If you are unsure, set them to '0'.
    - Double-check that latitude and longitude signs (+/-) are correct for this specific region.
    
-5. **Location Validation**:
+6. **Location Validation**:
    - Check if the **Destination** ("${trip.destination}") is a real, recognizable city or region on Earth.
    - If the input is gibberish (e.g., "sdfdsf"), a random string, or a place that does not exist:
      RETURN ONLY THIS JSON: { "error": "Location not found" }
@@ -98,7 +104,7 @@ CRITICAL INSTRUCTIONS:
           "description": "Max 10 words. Keywords only.",
           "latitude": 0.0, (Must be exact latitude for this place) 
           "longitude": 0.0, (Must be exact longitude for this place) 
-          "ticket_pricing": "Estimated cost (e.g. 'Free' or '20 EUR')",
+          "estimatedCost": "Estimated cost (e.g. 'Free' or '20 EUR')",
         }
       ]
     }
@@ -129,7 +135,7 @@ export async function getPhotoByDestination(destination: string) {
     }
 
     return null;
-  } catch (error) {
+  } catch {
     return { success: false, message: "Failed to fetch photo" };
   }
 }

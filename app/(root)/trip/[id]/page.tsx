@@ -1,14 +1,14 @@
 import { getTripById } from "@/lib/actions/trip.actions";
 import { notFound } from "next/navigation";
 import TripHeader from "../../../../components/trip/header";
-import { MapComponent } from "@/components/map/map-component";
 import LoadingSpinner from "@/components/trip/loading";
-import TripItinerary from "@/components/trip/trip-itinerary";
 import { Button } from "@/components/ui/button";
 import RedirectButton from "@/components/utils/redirect-button";
 import { MapPinOff } from "lucide-react";
 import Link from "next/link";
 import DayChanger from "../../../../components/trip/dayChanger";
+import { parseBudgetRange, summarizeCosts } from "@/lib/cost";
+import TripJourneyView from "@/components/trip/trip-journey-view";
 
 const TripPage = async (props: {
   params: Promise<{ id: string }>;
@@ -25,7 +25,12 @@ const TripPage = async (props: {
   const tripDays = trip.trip?.tripDays || [];
   const dayIndex = Number(searchParams.day) || 0;
   const day = tripDays[dayIndex];
-  const activities = day?.activities || [];
+  const allActivities = tripDays.flatMap((tripDay) => tripDay.activities || []);
+  const totalCostSummary = summarizeCosts(
+    allActivities.map((activity) => activity.estimatedCost),
+  );
+  const budgetSummary = parseBudgetRange(trip.trip.budget);
+
   return (
     <>
       {trip.trip.status === "failed" && (
@@ -53,22 +58,27 @@ const TripPage = async (props: {
       {!trip.trip.aiGenerated && <LoadingSpinner tripId={trip.trip.id} />}
       {trip.trip.aiGenerated && trip.trip.status === "generated" && (
         <>
-          <TripHeader trip={trip.trip} />
+          <TripHeader
+            trip={trip.trip}
+            costSummary={totalCostSummary}
+            budgetSummary={budgetSummary}
+          />
           <DayChanger totalDays={trip.trip.tripDays.length} />
-          <div className="flex pt-8 pb-8 m-10 gap-5 max-[1050px]:flex-col">
-            <div className=" w-[60%] max-[1300px]:w-[70%] max-[1050px]:w-full">
-              <TripItinerary activities={activities} />
-            </div>
-            <div className="flex w-[40%] max-[1300px]:w-[30%] max-[1050px]:w-full">
-              <div className="sticky top-[45%] h-[50vh] w-full max-[1300px]:h-[30vh]  max-[1050px]:h-[40vh]">
-                <div className="h-full w-full rounded-xl overflow-hidden">
-                  <MapComponent day={day} />
-                </div>
-              </div>
-            </div>
+          <div className="px-4 pb-8 pt-8 md:px-10">
+            <TripJourneyView
+              trip={trip.trip}
+              day={day ?? null}
+              dayIndex={dayIndex}
+              budgetSummary={budgetSummary}
+              totalCostSummary={totalCostSummary}
+            />
           </div>
           <div className="flex justify-center p-10">
-            <Button asChild className="w-full md:w-auto md:min-w-50" variant="outline">
+            <Button
+              asChild
+              className="w-full md:w-auto md:min-w-50"
+              variant="outline"
+            >
               <Link href={"/"}>To all your trips</Link>
             </Button>
           </div>
