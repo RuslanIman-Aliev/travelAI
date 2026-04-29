@@ -1,16 +1,33 @@
 "use server";
 
 import { auth } from "@/auth";
-import { insertTripSchema } from "@/lib/validators";
+import { insertTripSchema, userTripsFilterSchema } from "@/lib/validators";
 import { prisma } from "@/prisma";
 import z from "zod";
 import { formatError } from "../utils";
+import { checkRateLimit } from "../security";
+
+const getAuthenticatedUserId = async () => {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  return session.user.id;
+};
 
 export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
+    const userId = await getAuthenticatedUserId();
+    const rateLimit = checkRateLimit(`insert-trip:${userId}`, {
+      limit: 5,
+      windowMs: 60_000,
+    });
+
+    if (!rateLimit.allowed) {
+      throw new Error(
+        "Too many trip creation requests. Please try again later.",
+      );
     }
 
     const tripData = insertTripSchema.parse(data);
@@ -28,7 +45,7 @@ export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
         country: tripData.country,
         budget,
         daysCount,
-        userId: session.user.id,
+        userId,
       },
     });
     return {
@@ -83,17 +100,19 @@ export async function getTripById(tripId: string) {
   }
 }
 
-export async function getUserTrips(
-  userId: string,
-  status?: string,
-  isGenerated?: boolean,
-) {
+export async function getUserTrips(status?: string, isGenerated?: boolean) {
   try {
+    const userId = await getAuthenticatedUserId();
+    const filters = userTripsFilterSchema.parse({
+      status: status?.trim() || undefined,
+      isGenerated,
+    });
+
     const trips = await prisma.trip.findMany({
       where: {
-        userId: userId,
-        status: status ? status : undefined,
-        aiGenerated: isGenerated,
+        userId,
+        status: filters.status,
+        aiGenerated: filters.isGenerated,
       },
       orderBy: {
         createdAt: "desc",
@@ -108,17 +127,18 @@ export async function getUserTrips(
   }
 }
 
-export async function getUserStatictics(userId: string) {
+export async function getUserStatictics() {
   try {
+    const userId = await getAuthenticatedUserId();
     const tripsCount = await prisma.trip.count({
       where: {
-        userId: userId,
+        userId,
         aiGenerated: true,
       },
     });
     const countries = await prisma.trip.findMany({
       where: {
-        userId: userId,
+        userId,
         aiGenerated: true,
       },
       distinct: ["country"],
@@ -128,7 +148,7 @@ export async function getUserStatictics(userId: string) {
     });
     const cities = await prisma.trip.findMany({
       where: {
-        userId: userId,
+        userId,
         aiGenerated: true,
       },
       distinct: ["destination"],

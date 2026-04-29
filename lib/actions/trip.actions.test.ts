@@ -143,9 +143,10 @@ describe("trip.actions", () => {
 
   describe("getUserTrips", () => {
     it("queries trips using provided filters", async () => {
+      authMock.mockResolvedValue({ user: { id: "user_1" } } as never);
       prismaMock.trip.findMany.mockResolvedValue([{ id: "trip_1" }]);
 
-      const result = await getUserTrips("user_1", "generated", true);
+      const result = await getUserTrips("generated", true);
 
       expect(result).toEqual({
         success: true,
@@ -164,11 +165,12 @@ describe("trip.actions", () => {
     });
 
     it("returns formatted error when trip lookup fails", async () => {
+      authMock.mockResolvedValue({ user: { id: "user_1" } } as never);
       prismaMock.trip.findMany.mockRejectedValue(
         new Error("DB is unavailable"),
       );
 
-      const result = await getUserTrips("user_1");
+      const result = await getUserTrips();
 
       expect(result).toEqual({
         success: false,
@@ -179,6 +181,7 @@ describe("trip.actions", () => {
 
   describe("getUserStatictics", () => {
     it("returns aggregated statistics", async () => {
+      authMock.mockResolvedValue({ user: { id: "user_1" } } as never);
       prismaMock.trip.count.mockResolvedValue(3);
       prismaMock.trip.findMany
         .mockResolvedValueOnce([{ country: "France" }, { country: "Spain" }])
@@ -188,7 +191,7 @@ describe("trip.actions", () => {
           { destination: "Barcelona" },
         ]);
 
-      const result = await getUserStatictics("user_1");
+      const result = await getUserStatictics();
 
       expect(result).toEqual({
         success: true,

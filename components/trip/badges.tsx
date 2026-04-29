@@ -19,13 +19,16 @@ const Badges = ({
   costSummary?: CostSummary;
   budgetSummary?: BudgetRange | null;
 }) => {
-  const budgetLabel = formatBudgetRange(budgetSummary ?? null) || trip.budget || "N/A";
+  const budgetLabel =
+    formatBudgetRange(budgetSummary ?? null) || trip.budget || "N/A";
   const costLabel = costSummary ? formatCostSummary(costSummary) : "N/A";
   const isOverBudget = Boolean(
     budgetSummary &&
     costSummary?.hasValues &&
-    !costSummary.hasMixedCurrency &&
     budgetSummary.max != null &&
+    costSummary.currency &&
+    budgetSummary.currency &&
+    costSummary.currency === budgetSummary.currency &&
     costSummary.total > budgetSummary.max,
   );
 

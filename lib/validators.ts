@@ -2,6 +2,22 @@ import z from "zod";
 
 // Define a Zod schema for a Trip Details
 
+const tripStatusSchema = z.enum(["draft", "generated", "failed"]);
+
+const liveGuidePlaceSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  address: z.string().min(1),
+  category: z.string().min(1),
+  rating: z.number(),
+  userRatingCount: z.number().optional(),
+  distance: z.number().optional(),
+  location: z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }),
+});
+
 export const insertTripSchema = z.object({
   destination: z.string().min(1, "Destination is required"),
   country: z.string().min(1, "Country is required"),
@@ -9,6 +25,31 @@ export const insertTripSchema = z.object({
   endDate: z.date(),
   interests: z.array(z.string()).optional(),
   budget: z.array(z.number()).min(2).max(2).optional(),
+});
+
+export const userTripsFilterSchema = z.object({
+  status: z
+    .union([tripStatusSchema, z.literal("")])
+    .optional()
+    .transform((value) => (value === "" ? undefined : value)),
+  isGenerated: z.boolean().optional(),
+});
+
+export const startTripRequestSchema = z.object({
+  tripId: z.string().cuid("Trip ID is invalid"),
+});
+
+export const coordinatesSchema = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
+
+export const liveGuideRouteSchema = z.object({
+  location: z.string().min(1),
+  coords: coordinatesSchema,
+  radiusNumber: z.number().int().positive(),
+  selectedPlaces: z.array(liveGuidePlaceSchema).min(1).max(10),
+  mapLink: z.string().url(),
 });
 
 export const formSchema = z.object({

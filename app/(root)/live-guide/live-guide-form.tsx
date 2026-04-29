@@ -43,7 +43,7 @@ import { useState } from "react";
 import { Controller, ControllerRenderProps, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-const LiveGuideForm = ({ userId }: { userId: string }) => {
+const LiveGuideForm = () => {
   const form = useForm<LiveGuideFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -194,7 +194,7 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
 
     const generatedUrl = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&waypoints=${waypointsStr}&travelmode=driving`;
     setGoogleMapsUrl(generatedUrl);
-    const res = await saveLiveGuideRoute(userId, {
+    const res = await saveLiveGuideRoute({
       location: data.location,
       coords: coords,
       radiusNumber: Number(data.radius.split(" ")[0]) * 1000,
@@ -209,14 +209,15 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
     }
   };
 
-  const togglePlaceById = (place: MappedPlace, field: ControllerRenderProps<LiveGuideFormValues, "selectedPlaces">) => {
+  const togglePlaceById = (
+    place: MappedPlace,
+    field: ControllerRenderProps<LiveGuideFormValues, "selectedPlaces">,
+  ) => {
     const current = field.value ?? [];
     const exists = current.some((p) => p.id === place.id);
 
     field.onChange(
-      exists
-        ? current.filter((p) => p.id !== place.id)
-        : [...current, place],
+      exists ? current.filter((p) => p.id !== place.id) : [...current, place],
     );
   };
 
@@ -441,13 +442,9 @@ const LiveGuideForm = ({ userId }: { userId: string }) => {
                     Please fix the following errors:
                   </div>
                   <ul className="mt-2 list-inside list-disc opacity-90">
-                    {Object.entries(errors).map(
-                      ([key, error]) => (
-                        <li key={key}>
-                          {error.message}
-                        </li>
-                      ),
-                    )}
+                    {Object.entries(errors).map(([key, error]) => (
+                      <li key={key}>{error.message}</li>
+                    ))}
                   </ul>
                 </div>
               )}
