@@ -108,7 +108,7 @@ describe("cost helpers", () => {
           hasUnknown: false,
           hasValues: true,
         }),
-      ).toBe("24 EUR (mixed)");
+      ).toBe("Mixed currencies");
 
       expect(
         formatCostSummary({

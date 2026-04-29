@@ -145,13 +145,13 @@ export const summarizeCosts = (
 export const formatCostSummary = (summary: CostSummary) => {
   if (!summary.hasValues) return "N/A";
   if (summary.total === 0 && !summary.hasUnknown) return "Free";
+  if (summary.hasMixedCurrency) return "Mixed currencies";
 
   const totalLabel = formatNumber(summary.total);
   const base = summary.currency
     ? `${totalLabel} ${summary.currency}`
     : totalLabel;
 
-  if (summary.hasMixedCurrency) return `${base} (mixed)`;
   if (summary.hasUnknown) return `${base}+`;
   return base;
 };

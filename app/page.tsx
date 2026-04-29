@@ -9,8 +9,8 @@ import Link from "next/link";
 export default async function Home() {
   const session = await auth();
   let statistics;
-  if(session?.user?.id){
-    statistics = await getUserStatictics(session.user.id);
+  if (session?.user?.id) {
+    statistics = await getUserStatictics();
   }
   return (
     <div className="m-10">
@@ -24,11 +24,12 @@ export default async function Home() {
           </p>
         </CardContent>
         <CardFooter className="flex gap-3">
-          <Button className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold" asChild>
+          <Button
+            className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold"
+            asChild
+          >
             <Link href={"/new-trip"}>Start Planning</Link>
           </Button>
-
-         
         </CardFooter>
       </Card>
 
@@ -41,7 +42,7 @@ export default async function Home() {
       {session?.user?.id && (
         <div className="flex w-full gap-6 mt-10 flex-wrap">
           <h1>Your successfully generated trips </h1>
-          <UserTrips userId={session?.user?.id} value="" isGenerated={true}/>
+          <UserTrips value="" isGenerated={true} />
         </div>
       )}
     </div>

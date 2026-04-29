@@ -1,9 +1,12 @@
 "use server";
 
-export async function getAddressFromCoordinates(lat: number, lng: number) {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`;
+import { coordinatesSchema } from "../validators";
 
+export async function getAddressFromCoordinates(lat: number, lng: number) {
   try {
+    const parsed = coordinatesSchema.parse({ lat, lng });
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${parsed.lat}&lon=${parsed.lng}&accept-language=en`;
+
     const response = await fetch(url, {
       headers: {
         "User-Agent": "TravelGuideApp/1.0 s0970802047@gmail.com",

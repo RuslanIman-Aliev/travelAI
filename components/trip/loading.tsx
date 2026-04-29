@@ -30,6 +30,9 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
       try {
         const res = await fetch("/api/start-trip", {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ tripId: tripId }),
         });
 
