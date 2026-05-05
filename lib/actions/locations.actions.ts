@@ -2,6 +2,14 @@
 
 import { coordinatesSchema } from "../validators";
 
+/**
+ * Retrieves the address corresponding to the provided latitude and longitude using the Nominatim OpenStreetMap API.
+ * Validates the coordinates to ensure they format correctly before the request.
+ *
+ * @param {number} lat - The latitude coordinate.
+ * @param {number} lng - The longitude coordinate.
+ * @returns {Promise<any|null>} The parsed JSON data containing address details, or null if an error occurs.
+ */
 export async function getAddressFromCoordinates(lat: number, lng: number) {
   try {
     const parsed = coordinatesSchema.parse({ lat, lng });

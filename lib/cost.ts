@@ -24,18 +24,36 @@ export type BudgetRange = {
 const numberPattern = /(\d+(?:[.,]\d+)?)/;
 const currencyPattern = /\b[A-Za-z]{3}\b/;
 
+/**
+ * Normalizes a number string by replacing commas with dots and converting it to a finite number.
+ *
+ * @param {string} value - The numerical string to normalize.
+ * @returns {number|null} The parsed finite number, or null if the parsing fails.
+ */
 const normalizeNumber = (value: string) => {
   const normalized = value.replace(",", ".");
   const amount = Number(normalized);
   return Number.isFinite(amount) ? amount : null;
 };
 
+/**
+ * Formats a number to a string, rounding it to two decimal places if it's not an integer.
+ *
+ * @param {number} value - The numerical value to format.
+ * @returns {string} The formatted number as a string.
+ */
 const formatNumber = (value: number) => {
   if (Number.isInteger(value)) return value.toString();
   const rounded = Math.round(value * 100) / 100;
   return rounded.toString();
 };
 
+/**
+ * Parses a string representing an estimated cost into a structured `ParsedCost` object.
+ *
+ * @param {string|null} [value] - The raw cost string to parse.
+ * @returns {ParsedCost} An object containing the parsed amount, currency, and flags indicating if it's free or ambiguous.
+ */
 export const parseEstimatedCost = (value?: string | null): ParsedCost => {
   if (!value) {
     return {
@@ -97,6 +115,12 @@ export const parseEstimatedCost = (value?: string | null): ParsedCost => {
   };
 };
 
+/**
+ * Consolidates the parsing logic to return a user-friendly label for an estimated cost string.
+ *
+ * @param {string|null} [value] - The raw cost string to format.
+ * @returns {string} The formatted label for the estimated cost.
+ */
 export const formatEstimatedCostLabel = (value?: string | null) => {
   const parsed = parseEstimatedCost(value);
   if (parsed.isFree) return "Free";
@@ -104,6 +128,12 @@ export const formatEstimatedCostLabel = (value?: string | null) => {
   return parsed.label;
 };
 
+/**
+ * Computes a summary from an array of estimated cost strings, aggregating totals and currencies.
+ *
+ * @param {Array<string|null|undefined>} values - A list of individual cost strings to summarize.
+ * @returns {CostSummary} An object holding the total cost and boolean flags for unknowns and mixed currencies.
+ */
 export const summarizeCosts = (
   values: Array<string | null | undefined>,
 ): CostSummary => {
@@ -142,6 +172,12 @@ export const summarizeCosts = (
   };
 };
 
+/**
+ * Formats a `CostSummary` object into a readable short string for UI display.
+ *
+ * @param {CostSummary} summary - The structured cost summary to format.
+ * @returns {string} A user-facing string summarizing the costs.
+ */
 export const formatCostSummary = (summary: CostSummary) => {
   if (!summary.hasValues) return "N/A";
   if (summary.total === 0 && !summary.hasUnknown) return "Free";
@@ -156,6 +192,12 @@ export const formatCostSummary = (summary: CostSummary) => {
   return base;
 };
 
+/**
+ * Parses a budget range string into maximum, minimum values, and currency.
+ *
+ * @param {string|null} [budget] - The raw budget string to parse.
+ * @returns {BudgetRange|null} A struct containing min, max, and currency, or null if parsing fails.
+ */
 export const parseBudgetRange = (
   budget?: string | null,
 ): BudgetRange | null => {
@@ -180,6 +222,12 @@ export const parseBudgetRange = (
   };
 };
 
+/**
+ * Formats a `BudgetRange` object natively to a human-readable string representation.
+ *
+ * @param {BudgetRange|null} budget - The budget struct to format.
+ * @returns {string} The formatted budget label.
+ */
 export const formatBudgetRange = (budget: BudgetRange | null) => {
   if (!budget) return "N/A";
   const minLabel = formatNumber(budget.min);

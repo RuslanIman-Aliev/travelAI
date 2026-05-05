@@ -4,10 +4,23 @@ import { twMerge } from "tailwind-merge";
 import { PEXELS_API_KEY } from "./variables";
 import { ZodError } from "zod";
 
+/**
+ * Utility function to conditionally merge Tailwind CSS classes using `clsx` and `tailwind-merge`.
+ * Ensures overriding classes are resolved correctly.
+ *
+ * @param {...ClassValue[]} inputs - Any number of class values (strings, arrays, objects) to combine.
+ * @returns {string} The computed final CSS class string.
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Formats various errors (Zod validation, Prisma, generic errors) into a user-friendly string message.
+ *
+ * @param {unknown} error - The error object caught in a try/catch block.
+ * @returns {string} A human-readable error message.
+ */
 export function formatError(error: unknown): string {
   // 1. Handle Zod Errors
   if (error instanceof ZodError) {
@@ -31,6 +44,12 @@ export function formatError(error: unknown): string {
   return "An unexpected error occurred";
 }
 
+/**
+ * Generates an AI prompt string from trip details to pass to an LLM for generating a travel itinerary.
+ *
+ * @param {{trip: Trip}} param0 - An object containing the trip details (requires destination, country, dates, budget, etc.).
+ * @returns {string} The constructed prompt containing trip requirements and JSON schema enforcement instructions.
+ */
 export function getAIPrompt({ trip }: { trip: Trip }) {
   // We format the dates nicely for the AI
   const formattedDates = `${new Date(
@@ -113,6 +132,13 @@ CRITICAL INSTRUCTIONS:
 `;
 }
 
+/**
+ * Fetches a representative landscape photo for a given destination using the Pexels API.
+ * Attempts to retrieve a cached version using Next.js `fetch` configuration.
+ *
+ * @param {string} destination - The name of the city, country, or location to search for.
+ * @returns {Promise<string|null|{success: boolean, message: string}>} The URL of the requested image, null if it is not found, or an error object.
+ */
 export async function getPhotoByDestination(destination: string) {
   try {
     const url =

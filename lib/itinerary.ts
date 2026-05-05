@@ -10,6 +10,12 @@ export type ActivityFilters = {
 
 const timePattern = /^(?:([01]?\d|2[0-3]):([0-5]\d))$/;
 
+/**
+ * Parses a time string (e.g., "14:30") into the total number of minutes since midnight.
+ *
+ * @param {string|null} [time] - The time string to parse.
+ * @returns {number|null} The converted number of minutes, or null if the string is invalid/empty.
+ */
 const parseTimeToMinutes = (time?: string | null) => {
   const trimmed = time?.trim();
   if (!trimmed) return null;
@@ -22,9 +28,24 @@ const parseTimeToMinutes = (time?: string | null) => {
   return hours * 60 + minutes;
 };
 
+/**
+ * Checks if an activity holds valid geographic coordinates.
+ *
+ * @param {Activity} activity - The activity entity to examine.
+ * @returns {boolean} True if both latitude and longitude are assigned, false otherwise.
+ */
 const hasCoordinates = (activity: Activity) =>
   activity.latitude != null && activity.longitude != null;
 
+/**
+ * Calculates the great-circle distance between two sets of coordinates using the Haversine formula.
+ *
+ * @param {number} fromLat - Starting point latitude.
+ * @param {number} fromLng - Starting point longitude.
+ * @param {number} toLat - Destination point latitude.
+ * @param {number} toLng - Destination point longitude.
+ * @returns {number} The distance in kilometers between the two points.
+ */
 const haversineDistanceKm = (
   fromLat: number,
   fromLng: number,
@@ -43,6 +64,12 @@ const haversineDistanceKm = (
   return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+/**
+ * Finds the first activity in an array that has valid coordinate data.
+ *
+ * @param {Activity[]} activities - A list of activities to search.
+ * @returns {Activity|null} The first compliant activity, or null if none possess coordinates.
+ */
 const getCoordinateAnchor = (activities: Activity[]) =>
   activities.find(hasCoordinates) ?? null;
 
@@ -59,6 +86,12 @@ const getCoordinateAnchor = (activities: Activity[]) =>
 //   );
 // };
 
+/**
+ * Sorts activities chronologically using their string-based time property.
+ *
+ * @param {Activity[]} activities - An array of activities to sort.
+ * @returns {Activity[]} A fresh sorted array, grouping items without time at the end.
+ */
 const sortByTime = (activities: Activity[]) =>
   [...activities].sort((left, right) => {
     const leftTime = parseTimeToMinutes(left.time);
@@ -71,6 +104,13 @@ const sortByTime = (activities: Activity[]) =>
     return left.order - right.order;
   });
 
+/**
+ * Sorts activities optimizing for the shortest geographical path (nearest-neighbor routing).
+ * Items lacking coordinates are relocated to the end of the array.
+ *
+ * @param {Activity[]} activities - The array of activities to sequence.
+ * @returns {Activity[]} A newly sorted array reflecting a continuously nearest path.
+ */
 const sortByRouteDistance = (activities: Activity[]) => {
   const remaining = [...activities.filter(hasCoordinates)];
   const ordered: Activity[] = [];
@@ -116,6 +156,13 @@ const sortByRouteDistance = (activities: Activity[]) => {
   return [...ordered, ...withoutCoords];
 };
 
+/**
+ * Filters a list of activities based on allowed place categories.
+ *
+ * @param {Activity[]} activities - The original list of activities.
+ * @param {string[]} enabledPlaceTypes - A list of lowercase place type keys to retain.
+ * @returns {Activity[]} An array restricted to activities whose place type is enabled.
+ */
 export const filterActivitiesByPlaceType = (
   activities: Activity[],
   enabledPlaceTypes: string[],
@@ -132,6 +179,13 @@ export const filterActivitiesByPlaceType = (
   });
 };
 
+/**
+ * Chooses an appropriate sorting method and applies it to the array of activities.
+ *
+ * @param {Activity[]} activities - The activities to sort.
+ * @param {ActivitySortMode} [sortMode="auto"] - The requested strategy for arranging the items.
+ * @returns {Activity[]} The sorted array based on time, distance, or a default strategy.
+ */
 export const sortActivities = (
   activities: Activity[],
   sortMode: ActivitySortMode = "auto",
@@ -167,6 +221,13 @@ export const sortActivities = (
   return activities;
 };
 
+/**
+ * Reorders activities to match a predetermined sequence established entirely by an array of IDs.
+ *
+ * @param {Activity[]} activities - The current activities.
+ * @param {string[]} [manualOrder=[]] - An ordered array of Activity IDs.
+ * @returns {Activity[]} The structured collection placing specified IDs first, then appending any absent ones.
+ */
 export const sortActivitiesByManualOrder = (
   activities: Activity[],
   manualOrder: string[] = [],
@@ -194,6 +255,13 @@ export const sortActivitiesByManualOrder = (
   return ordered;
 };
 
+/**
+ * Consolidates filtering and sorting algorithms based on an aggregate filters object.
+ *
+ * @param {Activity[]} activities - The original, raw array of activities.
+ * @param {ActivityFilters} filters - Options containing conditions and sort algorithms to apply.
+ * @returns {Activity[]} The newly formed array post-filtered and properly sorted.
+ */
 export const filterAndSortActivities = (
   activities: Activity[],
   filters: ActivityFilters,

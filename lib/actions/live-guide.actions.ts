@@ -7,6 +7,14 @@ import { liveGuideRouteSchema } from "../validators";
 import { formatError } from "../utils";
 import { GooglePlace, LiveRouteData } from "../types";
 
+/**
+ * Saves a live guide route to the database for the authenticated user.
+ * Validates the session, enforces rate limits, and parses incoming data before creation.
+ *
+ * @param {LiveRouteData} data - The live route data including location, coordinates, radius, map link, and selected places.
+ * @returns {Promise<{success: boolean, error?: string}>} An object indicating success and optionally providing an error message.
+ * @throws {Error} Thrown internally if authorization or rate-limiting fails.
+ */
 export async function saveLiveGuideRoute(data: LiveRouteData) {
   try {
     const session = await auth();
