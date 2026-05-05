@@ -137,7 +137,7 @@ CRITICAL INSTRUCTIONS:
  * Attempts to retrieve a cached version using Next.js `fetch` configuration.
  *
  * @param {string} destination - The name of the city, country, or location to search for.
- * @returns {Promise<string|null|{success: boolean, message: string}>} The URL of the requested image, null if it is not found, or an error object.
+ * @returns {Promise<string|null|{success: false, message: string}>} The URL of the requested image, null if it is not found, or an error object indicating the photo fetch failed.
  */
 export async function getPhotoByDestination(destination: string) {
   try {
