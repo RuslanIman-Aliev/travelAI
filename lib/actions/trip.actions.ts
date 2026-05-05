@@ -7,6 +7,12 @@ import z from "zod";
 import { formatError } from "../utils";
 import { checkRateLimit } from "../security";
 
+/**
+ * Retrieves the ID of the currently authenticated user.
+ *
+ * @returns {Promise<string>} A promise that resolves to the authenticated user's ID.
+ * @throws {Error} If the user is unauthenticated or the session is invalid.
+ */
 const getAuthenticatedUserId = async () => {
   const session = await auth();
   if (!session?.user?.id) {
@@ -16,6 +22,13 @@ const getAuthenticatedUserId = async () => {
   return session.user.id;
 };
 
+/**
+ * Creates a new trip in the database for the authenticated user.
+ * Includes rate limiting checks to prevent abuse.
+ *
+ * @param {z.infer<typeof insertTripSchema>} data - The trip data conforming to the insertTripSchema.
+ * @returns {Promise<{success: boolean, message: string, tripId?: string}>} The result of the operation containing a success flag, message, and potentially the newly created trip ID.
+ */
 export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
   try {
     const userId = await getAuthenticatedUserId();
@@ -61,6 +74,13 @@ export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
   }
 }
 
+/**
+ * Retrieves a specific trip by its ID, complete with days and associated activities.
+ * Validates that the trip belongs to the currently authenticated user.
+ *
+ * @param {string} tripId - The unique identifier of the trip to retrieve.
+ * @returns {Promise<{success: boolean, message?: string, trip?: any}>} The result of the operation containing a success flag, and optionally the trip data or an error message.
+ */
 export async function getTripById(tripId: string) {
   try {
     const session = await auth();
@@ -100,6 +120,14 @@ export async function getTripById(tripId: string) {
   }
 }
 
+/**
+ * Retrieves all trips associated with the currently authenticated user.
+ * Supports optional filtering by trip status and generation source.
+ *
+ * @param {string} [status] - Optional filter for the trip's status.
+ * @param {boolean} [isGenerated] - Optional filter to check if the trip was AI-generated.
+ * @returns {Promise<{success: boolean, message?: string, trips?: any[]}>} The result of the operation containing a success flag, and optionally the list of trips or an error message.
+ */
 export async function getUserTrips(status?: string, isGenerated?: boolean) {
   try {
     const userId = await getAuthenticatedUserId();
@@ -127,6 +155,12 @@ export async function getUserTrips(status?: string, isGenerated?: boolean) {
   }
 }
 
+/**
+ * Aggregates statistics for the user's AI-generated trips.
+ * Calculates total trip count, distinct countries visited, and unique cities queried.
+ *
+ * @returns {Promise<{success: boolean, message?: string, tripsCount?: number, countries?: number, cities?: number}>} The result of the operation including the calculated metrics.
+ */
 export async function getUserStatictics() {
   try {
     const userId = await getAuthenticatedUserId();

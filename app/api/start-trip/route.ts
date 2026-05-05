@@ -5,6 +5,13 @@ import { startTripRequestSchema } from "@/lib/validators";
 import { prisma } from "@/prisma";
 import { NextResponse } from "next/server";
 
+/**
+ * Handles HTTP POST requests to start the trip generation background process.
+ * Verifies CORS origin, user session, rate limits via security utilities, and triggers an event inside Inngest.
+ *
+ * @param {Request} req - The incoming web request payload.
+ * @returns {Promise<NextResponse>} The JSON response indicating success or providing detailed validation or server error messages.
+ */
 export async function POST(req: Request) {
   if (!isSameOriginRequest(req)) {
     return NextResponse.json(
