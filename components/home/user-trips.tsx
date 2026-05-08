@@ -14,16 +14,21 @@ import {
 const UserTrips = async ({
   value,
   isGenerated,
+  page = 1,
 }: {
   value: string;
   isGenerated: boolean;
+  page?: number;
 }) => {
-  const trips = await getUserTrips(value, isGenerated);
+  const tripsResult = await getUserTrips(value, isGenerated, page, 6);
 
-  if (!trips.success) {
+  if (!tripsResult.success) {
     return <></>;
   }
-  const tripList = trips.trips;
+
+  const tripList = tripsResult.trips;
+  const pagination = tripsResult.pagination;
+
   return (
     <>
       <div>
@@ -40,6 +45,7 @@ const UserTrips = async ({
                     src={trip.imageUrl!}
                     alt="Trip Image"
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover "
                   />
                   <div className="absolute inset-0 bg-linear-to-b from-transparent dark:bg-[linear-gradient(to_right,#09090b66,#23232866)]" />
@@ -63,6 +69,38 @@ const UserTrips = async ({
           </Card>
         ))}
       </div>
+
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex justify-center gap-4 mt-6">
+          <Button
+            variant="outline"
+            disabled={pagination.currentPage <= 1}
+            asChild={pagination.currentPage > 1}
+          >
+            {pagination.currentPage > 1 ? (
+              <Link href={`/?page=${pagination.currentPage - 1}`}>
+                Previous
+              </Link>
+            ) : (
+              <span>Previous</span>
+            )}
+          </Button>
+          <span className="flex items-center">
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            disabled={pagination.currentPage >= pagination.totalPages}
+            asChild={pagination.currentPage < pagination.totalPages}
+          >
+            {pagination.currentPage < pagination.totalPages ? (
+              <Link href={`/?page=${pagination.currentPage + 1}`}>Next</Link>
+            ) : (
+              <span>Next</span>
+            )}
+          </Button>
+        </div>
+      )}
     </>
   );
 };

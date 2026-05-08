@@ -16,8 +16,22 @@ import { Activity, Trip } from "@prisma/client";
 import { AlertTriangle, ArrowDownUp } from "lucide-react";
 import { useMemo, useRef, useState, useTransition } from "react";
 import TripItinerary from "./trip-itinerary";
-import { MapComponent } from "@/components/map/map-component";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
+
+const MapComponent = dynamic(
+  () =>
+    import("@/components/map/map-component").then((mod) => mod.MapComponent),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full bg-slate-800 animate-pulse flex items-center justify-center text-slate-500">
+        Loading Map...
+      </div>
+    ),
+  },
+);
+
 import { type BudgetRange, type CostSummary } from "@/lib/cost";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 

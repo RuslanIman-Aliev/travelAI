@@ -1,5 +1,7 @@
 "use server";
 
+import { cache } from "react";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { insertTripSchema, userTripsFilterSchema } from "@/lib/validators";
 import { prisma } from "@/prisma";
@@ -61,6 +63,9 @@ export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
         userId,
       },
     });
+
+    revalidatePath("/");
+
     return {
       success: true,
       message: "Trip created successfully",
@@ -81,7 +86,7 @@ export async function insertTrip(data: z.infer<typeof insertTripSchema>) {
  * @param {string} tripId - The unique identifier of the trip to retrieve.
  * @returns {Promise<{success: boolean, message?: string, trip?: any}>} The result of the operation containing a success flag, and optionally the trip data or an error message.
  */
-export async function getTripById(tripId: string) {
+export const getTripById = cache(async (tripId: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -118,42 +123,76 @@ export async function getTripById(tripId: string) {
       message: formatError(error) || "An unexpected error occurred",
     };
   }
-}
+});
 
 /**
  * Retrieves all trips associated with the currently authenticated user.
- * Supports optional filtering by trip status and generation source.
+ * Supports optional filtering by trip status and generation source, as well as pagination.
  *
  * @param {string} [status] - Optional filter for the trip's status.
  * @param {boolean} [isGenerated] - Optional filter to check if the trip was AI-generated.
- * @returns {Promise<{success: boolean, message?: string, trips?: any[]}>} The result of the operation containing a success flag, and optionally the list of trips or an error message.
+ * @param {number} [page=1] - The page number to retrieve.
+ * @param {number} [limit=10] - The number of items per page.
+ * @returns {Promise<{success: boolean, message?: string, trips?: any[], pagination?: any}>} The result of the operation containing trips and pagination metadata.
  */
-export async function getUserTrips(status?: string, isGenerated?: boolean) {
-  try {
-    const userId = await getAuthenticatedUserId();
-    const filters = userTripsFilterSchema.parse({
-      status: status?.trim() || undefined,
-      isGenerated,
-    });
+export const getUserTrips = cache(
+  async (
+    status?: string,
+    isGenerated?: boolean,
+    page: number = 1,
+    limit: number = 10,
+  ) => {
+    try {
+      const userId = await getAuthenticatedUserId();
+      const filters = userTripsFilterSchema.parse({
+        status: status?.trim() || undefined,
+        isGenerated,
+      });
 
-    const trips = await prisma.trip.findMany({
-      where: {
-        userId,
-        status: filters.status,
-        aiGenerated: filters.isGenerated,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-    return { success: true, trips };
-  } catch (error) {
-    return {
-      success: false,
-      message: formatError(error) || "An unexpected error occurred",
-    };
-  }
-}
+      const skip = (page - 1) * limit;
+
+      const [trips, totalCount] = await Promise.all([
+        prisma.trip.findMany({
+          where: {
+            userId,
+            status: filters.status,
+            aiGenerated: filters.isGenerated,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          skip,
+          take: limit,
+        }),
+        prisma.trip.count({
+          where: {
+            userId,
+            status: filters.status,
+            aiGenerated: filters.isGenerated,
+          },
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalCount / limit);
+
+      return {
+        success: true,
+        trips,
+        pagination: {
+          totalCount,
+          totalPages,
+          currentPage: page,
+          limit,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: formatError(error) || "An unexpected error occurred",
+      };
+    }
+  },
+);
 
 /**
  * Aggregates statistics for the user's AI-generated trips.
@@ -161,35 +200,38 @@ export async function getUserTrips(status?: string, isGenerated?: boolean) {
  *
  * @returns {Promise<{success: boolean, message?: string, tripsCount?: number, countries?: number, cities?: number}>} The result of the operation including the calculated metrics.
  */
-export async function getUserStatictics() {
+export const getUserStatictics = cache(async () => {
   try {
     const userId = await getAuthenticatedUserId();
-    const tripsCount = await prisma.trip.count({
-      where: {
-        userId,
-        aiGenerated: true,
-      },
-    });
-    const countries = await prisma.trip.findMany({
-      where: {
-        userId,
-        aiGenerated: true,
-      },
-      distinct: ["country"],
-      select: {
-        country: true,
-      },
-    });
-    const cities = await prisma.trip.findMany({
-      where: {
-        userId,
-        aiGenerated: true,
-      },
-      distinct: ["destination"],
-      select: {
-        destination: true,
-      },
-    });
+    const [tripsCount, countries, cities] = await Promise.all([
+      prisma.trip.count({
+        where: {
+          userId,
+          aiGenerated: true,
+        },
+      }),
+      prisma.trip.findMany({
+        where: {
+          userId,
+          aiGenerated: true,
+        },
+        distinct: ["country"],
+        select: {
+          country: true,
+        },
+      }),
+      prisma.trip.findMany({
+        where: {
+          userId,
+          aiGenerated: true,
+        },
+        distinct: ["destination"],
+        select: {
+          destination: true,
+        },
+      }),
+    ]);
+
     return {
       success: true,
       tripsCount,
@@ -202,4 +244,4 @@ export async function getUserStatictics() {
       message: formatError(error) || "An unexpected error occurred",
     };
   }
-}
+});

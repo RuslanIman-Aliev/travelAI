@@ -6,7 +6,14 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { getUserStatictics } from "@/lib/actions/trip.actions";
 import Link from "next/link";
 
-export default async function Home() {
+interface Props {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function Home(props: Props) {
+  const searchParams = await props.searchParams;
+  const page = Number(searchParams?.page) || 1;
+
   const session = await auth();
   let statistics;
   if (session?.user?.id) {
@@ -40,9 +47,9 @@ export default async function Home() {
       </div>
 
       {session?.user?.id && (
-        <div className="flex w-full gap-6 mt-10 flex-wrap">
+        <div className="flex w-full gap-6 mt-10 flex-col">
           <h1>Your successfully generated trips </h1>
-          <UserTrips value="" isGenerated={true} />
+          <UserTrips value="" isGenerated={true} page={page} />
         </div>
       )}
     </div>
