@@ -4,10 +4,21 @@ import type { Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { cookies } from "next/headers";
+import { cache } from "react";
+import { UserFacingError } from "./lib/errors";
 import { prisma } from "./prisma";
 
-const isTestAuthEnabled = process.env.ENABLE_TEST_AUTH === "true";
-const E2E_COOKIE_NAME = "e2e-auth";
+/**
+ * The e2e sign-in shortcut below hands out a real session to anyone holding a
+ * cookie, so it is gated on the build as well as the env var. A stray
+ * `ENABLE_TEST_AUTH=true` in a production environment must not be enough to
+ * open the app.
+ */
+export const isTestAuthEnabled =
+  process.env.NODE_ENV !== "production" &&
+  process.env.ENABLE_TEST_AUTH === "true";
+
+export const E2E_COOKIE_NAME = "e2e-auth";
 
 const nextAuth = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -41,11 +52,7 @@ const nextAuth = NextAuth({
               const user = await prisma.user.upsert({
                 where: { email },
                 update: { name },
-                create: {
-                  email,
-                  name,
-                  emailVerified: new Date(),
-                },
+                create: { email, name, emailVerified: new Date() },
               });
 
               return {
@@ -67,7 +74,16 @@ export const handlers = nextAuth.handlers;
 export const signIn = nextAuth.signIn;
 export const signOut = nextAuth.signOut;
 
-export async function auth(): Promise<Session | null> {
+/**
+ * Resolves the current session.
+ *
+ * Wrapped in React `cache` so the several server components and actions that
+ * each need the session during one render share a single database lookup
+ * instead of issuing one `Session` query apiece.
+ *
+ * @returns {Promise<Session|null>} The active session, or null when signed out.
+ */
+export const auth = cache(async (): Promise<Session | null> => {
   if (isTestAuthEnabled) {
     const cookieStore = await cookies();
     const hasTestAuthCookie = cookieStore.get(E2E_COOKIE_NAME)?.value === "1";
@@ -79,11 +95,7 @@ export async function auth(): Promise<Session | null> {
       const user = await prisma.user.upsert({
         where: { email },
         update: { name },
-        create: {
-          email,
-          name,
-          emailVerified: new Date(),
-        },
+        create: { email, name, emailVerified: new Date() },
       });
 
       return {
@@ -99,4 +111,20 @@ export async function auth(): Promise<Session | null> {
   }
 
   return (await authBase()) as Session | null;
+});
+
+/**
+ * Resolves the current user's id, or throws when unauthenticated.
+ * Shared by every action that needs an owner for a query.
+ *
+ * @returns {Promise<string>} The authenticated user's id.
+ * @throws {Error} `Unauthorized` when there is no valid session.
+ */
+export async function requireUserId(): Promise<string> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new UserFacingError("Unauthorized");
+  }
+
+  return session.user.id;
 }

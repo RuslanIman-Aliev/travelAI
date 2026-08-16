@@ -31,9 +31,7 @@ const TripItinerary = ({
     );
   }
 
-  const dailyCostSummary = summarizeCosts(
-    activities.map((activity) => activity.estimatedCost),
-  );
+  const dailyCostSummary = summarizeCosts(activities);
   const dailyCostLabel = formatCostSummary(dailyCostSummary);
 
   return (

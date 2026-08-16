@@ -31,7 +31,11 @@ const DayChanger = ({ totalDays }: { totalDays: number }) => {
         onClick={() => handleNavigation(currentDay - 1)}
         disabled={currentDay <= 0 || isPending}
       >
-        {isPending ? <Spinner className="size-8" /> : <ChevronLeft className="w-10! h-10!" />}
+        {isPending ? (
+          <Spinner className="size-8" />
+        ) : (
+          <ChevronLeft className="w-10! h-10!" />
+        )}
       </Button>
       <div className="text-2xl">Day &mdash; {currentDay + 1}</div>
       <Button
@@ -40,7 +44,11 @@ const DayChanger = ({ totalDays }: { totalDays: number }) => {
         onClick={() => handleNavigation(currentDay + 1)}
         disabled={currentDay >= totalDays - 1 || isPending}
       >
-        {isPending ? <Spinner className="size-8"/> : <ChevronRight className="w-10! h-10!" />}
+        {isPending ? (
+          <Spinner className="size-8" />
+        ) : (
+          <ChevronRight className="w-10! h-10!" />
+        )}
       </Button>
     </div>
   );

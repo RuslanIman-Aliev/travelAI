@@ -4,13 +4,13 @@ import { insertTripSchema } from "@/lib/validators";
 import { BUDGET_RANGE, INTERESTS_LIST } from "@/lib/variables";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { useForm, useWatch, FieldErrors } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import z from "zod";
 
 import { insertTrip } from "@/lib/actions/trip.actions";
 import { cn } from "@/lib/utils";
 import { ArrowRightLeft, CalendarIcon } from "lucide-react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "../../../components/ui/button";
@@ -35,7 +35,15 @@ import {
   ToggleGroupItem,
 } from "../../../components/ui/toggle-group";
 
+/** Midnight today, so the current day stays selectable in the date picker. */
+const startOfToday = () => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now;
+};
+
 const CreateNewTripForm = () => {
+  const today = startOfToday();
   const form = useForm<z.infer<typeof insertTripSchema>>({
     resolver: zodResolver(insertTripSchema),
     defaultValues: {
@@ -45,10 +53,12 @@ const CreateNewTripForm = () => {
       budget: [BUDGET_RANGE[0], BUDGET_RANGE[1]],
     },
   });
+  const router = useRouter();
   const startDate = useWatch({ control: form.control, name: "startDate" });
   const endDate = useWatch({ control: form.control, name: "endDate" });
   const destination = useWatch({ control: form.control, name: "destination" });
-  const onError = (errors: FieldErrors<z.infer<typeof insertTripSchema>>) => {
+
+  const onError = () => {
     toast.error("Please fill in all required fields correctly.");
   };
 
@@ -63,8 +73,7 @@ const CreateNewTripForm = () => {
       }
 
       toast.success(res.message);
-      form.reset();
-      redirect(`/trip/${res.tripId}`);
+      router.push(`/trip/${res.tripId}`);
     });
   };
 
@@ -170,15 +179,17 @@ const CreateNewTripForm = () => {
                   defaultMonth={startDate}
                   selected={{ from: startDate, to: endDate }}
                   onSelect={(range) => {
-                    form.setValue("startDate", range?.from as Date);
-                    form.setValue("endDate", range?.to as Date);
+                    // `range.from`/`range.to` really can be undefined mid-selection;
+                    // let the resolver report that rather than casting it away.
+                    if (range?.from) form.setValue("startDate", range.from);
+                    if (range?.to) form.setValue("endDate", range.to);
 
                     if (range?.from && range?.to) {
                       form.trigger(["startDate", "endDate"]);
                     }
                   }}
                   numberOfMonths={2}
-                  disabled={(date) => date < new Date(new Date())}
+                  disabled={{ before: today }}
                 />
               </PopoverContent>
             </Popover>

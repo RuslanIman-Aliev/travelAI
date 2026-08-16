@@ -73,19 +73,6 @@ const haversineDistanceKm = (
 const getCoordinateAnchor = (activities: Activity[]) =>
   activities.find(hasCoordinates) ?? null;
 
-// const getDistanceFromAnchor = (activity: Activity, anchor: Activity | null) => {
-//   if (!anchor || !hasCoordinates(anchor) || !hasCoordinates(activity)) {
-//     return Number.POSITIVE_INFINITY;
-//   }
-
-//   return haversineDistanceKm(
-//     anchor.latitude as number,
-//     anchor.longitude as number,
-//     activity.latitude as number,
-//     activity.longitude as number,
-//   );
-// };
-
 /**
  * Sorts activities chronologically using their string-based time property.
  *

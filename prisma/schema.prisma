@@ -6,12 +6,20 @@
 
 generator client {
   provider = "prisma-client-js"
-  
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+/// Lifecycle of an itinerary. `generating` is claimed atomically before the
+/// background job is enqueued, so a second request cannot start a duplicate run.
+enum TripStatus {
+  draft
+  generating
+  generated
+  failed
 }
 
 // For Authentication (NextAuth.js)
@@ -32,6 +40,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -40,6 +49,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model User {
@@ -69,22 +80,26 @@ model Trip {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  destination String   
-  country     String?  
+  destination String
+  country     String?
   startDate   DateTime
   endDate     DateTime
-  daysCount   Int      
+  daysCount   Int
   imageUrl    String?
-  
-  budget      String?  
-  interests   String[] 
-  
-  status      String   @default("draft") 
-  aiGenerated Boolean  @default(false)
-  isPublic    Boolean  @default(false)
-  
+
+  // Budget is captured as a structured range so it never has to be re-parsed
+  // from free text at render time.
+  budgetMin      Int?
+  budgetMax      Int?
+  budgetCurrency String?
+
+  interests   String[]
+
+  status      TripStatus @default(draft)
+  aiGenerated Boolean    @default(false)
+
   tripDays    Day[]
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -97,12 +112,14 @@ model Day {
   tripId    String
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   
-  dayNumber Int      
+  dayNumber Int
   date      DateTime?
-  summary   String?  
-  
+  summary   String?
+
   activities Activity[]
 
+  // Guarantees a retried generation job cannot insert a second copy of a day.
+  @@unique([tripId, dayNumber])
   @@index([tripId])
 }
 
@@ -111,23 +128,23 @@ model Activity {
   dayId             String
   day               Day     @relation(fields: [dayId], references: [id], onDelete: Cascade)
   
-  title             String  
-  description       String? 
-  time              String? 
-  
-  // Data for places API integration
-  placeName         String? 
-  placeType         String? 
-  googleSearchQuery String? 
-  googlePlaceId     String? 
-  
+  title             String
+  description       String?
+  time              String?
+
+  placeName         String?
+  placeType         String?
+
   latitude          Float?
   longitude         Float?
-  photoUrl          String?
-  
-  estimatedCost     String? 
-  
-  order             Int     
+
+  // Money is stored as integer minor units (cents) rather than free text, so the
+  // LLM's "20 EUR" is parsed exactly once on ingestion instead of on every render.
+  estimatedCostCents    Int?
+  estimatedCostCurrency String?
+  estimatedCostIsFree   Boolean @default(false)
+
+  order             Int
 
   @@index([dayId])
 }
@@ -166,7 +183,9 @@ model LiveGuidePlace {
 
   lat           Float
   lng           Float
-  distance      Float?   
+  distance      Float?
 
-  orderIndex    Int       
+  orderIndex    Int
+
+  @@index([liveGuideId])
 }

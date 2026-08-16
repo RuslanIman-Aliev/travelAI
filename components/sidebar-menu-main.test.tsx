@@ -1,5 +1,15 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+/**
+ * @jest-environment jsdom
+ */
 import { SidebarMenuMain } from "@/components/sidebar-menu-main";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import * as React from "react";
+
+type MockElementProps = React.PropsWithChildren<Record<string, unknown>>;
+type MockButtonProps = MockElementProps & {
+  asChild?: boolean;
+  isActive?: boolean;
+};
 
 const mockSetTheme = jest.fn();
 const mockUsePathname = jest.fn();
@@ -30,34 +40,34 @@ jest.mock("next/link", () => {
   };
 });
 
-jest.mock("@/components/ui/sidebar", () => {
-  const React = require("react");
+jest.mock("@/components/ui/sidebar", () => ({
+  SidebarMenu: ({ children, ...props }: MockElementProps) => (
+    <ul {...props}>{children}</ul>
+  ),
+  SidebarMenuItem: ({ children, ...props }: MockElementProps) => (
+    <li {...props}>{children}</li>
+  ),
+  SidebarMenuButton: ({
+    children,
+    asChild,
+    isActive,
+    ...props
+  }: MockButtonProps) => {
+    const buttonProps = {
+      "data-active": isActive ? "true" : "false",
+      ...props,
+    };
 
-  return {
-    SidebarMenu: ({ children, ...props }: any) => (
-      <ul {...props}>{children}</ul>
-    ),
-    SidebarMenuItem: ({ children, ...props }: any) => (
-      <li {...props}>{children}</li>
-    ),
-    SidebarMenuButton: ({ children, asChild, isActive, ...props }: any) => {
-      const buttonProps = {
-        "data-active": isActive ? "true" : "false",
-        ...props,
-      };
+    if (asChild) {
+      const child = React.Children.only(children) as React.ReactElement<
+        Record<string, unknown>
+      >;
+      return React.cloneElement(child, { ...buttonProps, ...child.props });
+    }
 
-      if (asChild) {
-        const child = React.Children.only(children);
-        return React.cloneElement(child, {
-          ...buttonProps,
-          ...child.props,
-        });
-      }
-
-      return <button {...buttonProps}>{children}</button>;
-    },
-  };
-});
+    return <button {...buttonProps}>{children}</button>;
+  },
+}));
 
 describe("SidebarMenuMain", () => {
   beforeEach(() => {
