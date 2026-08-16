@@ -1,0 +1,11 @@
+.next
+node_modules
+coverage
+playwright-report
+test-results
+package-lock.json
+prisma/migrations
+public
+
+# Vendored shadcn/ui primitives - kept as generated so they can be re-pulled.
+components/ui

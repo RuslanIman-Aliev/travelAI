@@ -6,23 +6,22 @@ import {
   sortActivities,
 } from "@/lib/itinerary";
 
-const makeActivity = (overrides: Partial<Activity> = {}): Activity =>
-  ({
-    id: overrides.id ?? "activity_1",
-    dayId: overrides.dayId ?? "day_1",
-    title: overrides.title ?? "Activity",
-    description: overrides.description ?? null,
-    time: overrides.time ?? null,
-    placeName: overrides.placeName ?? null,
-    placeType: overrides.placeType ?? null,
-    googleSearchQuery: overrides.googleSearchQuery ?? null,
-    googlePlaceId: overrides.googlePlaceId ?? null,
-    latitude: overrides.latitude ?? null,
-    longitude: overrides.longitude ?? null,
-    photoUrl: overrides.photoUrl ?? null,
-    estimatedCost: overrides.estimatedCost ?? null,
-    order: overrides.order ?? 1,
-  }) as Activity;
+const makeActivity = (overrides: Partial<Activity> = {}): Activity => ({
+  id: "activity_1",
+  dayId: "day_1",
+  title: "Activity",
+  description: null,
+  time: null,
+  placeName: null,
+  placeType: null,
+  latitude: null,
+  longitude: null,
+  estimatedCostCents: null,
+  estimatedCostCurrency: null,
+  estimatedCostIsFree: false,
+  order: 1,
+  ...overrides,
+});
 
 describe("itinerary helpers", () => {
   it("filters activities by place type", () => {

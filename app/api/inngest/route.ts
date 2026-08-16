@@ -1,10 +1,8 @@
-import { inngest } from "@/lib/inggest/client";
-import { generateTripFunction } from "@/lib/inggest/functions";
+import { inngest } from "@/lib/inngest/client";
+import { generateTripFunction } from "@/lib/inngest/functions";
 import { serve } from "inngest/next";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [
-   generateTripFunction
-  ],
+  functions: [generateTripFunction],
 });

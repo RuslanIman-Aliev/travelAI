@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const securityHeaders = [
   {
@@ -28,6 +29,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Pin the workspace root: a stray lockfile above this directory otherwise
+  // makes Turbopack infer the wrong one.
+  turbopack: {
+    root: path.join(__dirname),
+  },
   async headers() {
     return [
       {

@@ -1,15 +1,26 @@
-import { format } from "date-fns";
-import { AlertTriangle, Calendar, MapPin, Wallet } from "lucide-react";
-import { Button } from "../ui/button";
-import { Trip } from "@prisma/client";
+import { Badge } from "@/components/ui/badge";
 import {
-  type BudgetRange,
-  type CostSummary,
   formatBudgetRange,
   formatCostSummary,
+  isOverBudget as computeIsOverBudget,
+  type BudgetRange,
+  type CostSummary,
 } from "@/lib/cost";
 import { cn } from "@/lib/utils";
+import { Trip } from "@prisma/client";
+import { format } from "date-fns";
+import { AlertTriangle, Calendar, MapPin, Wallet } from "lucide-react";
 
+const chipClass =
+  "bg-black/20 backdrop-blur-sm border-white/10 text-white px-3 py-1.5 text-sm";
+
+/**
+ * Renders the read-only summary chips for a trip.
+ *
+ * These are labels, not controls, so they are `Badge` (a `span`) rather than
+ * `Button` - four fake buttons per trip made every card announce actionable
+ * controls that did nothing.
+ */
 const Badges = ({
   trip,
   costSummary,
@@ -19,72 +30,54 @@ const Badges = ({
   costSummary?: CostSummary;
   budgetSummary?: BudgetRange | null;
 }) => {
-  const budgetLabel =
-    formatBudgetRange(budgetSummary ?? null) || trip.budget || "N/A";
+  const budgetLabel = formatBudgetRange(budgetSummary ?? null);
   const costLabel = costSummary ? formatCostSummary(costSummary) : "N/A";
-  const isOverBudget = Boolean(
-    budgetSummary &&
-    costSummary?.hasValues &&
-    budgetSummary.max != null &&
-    costSummary.currency &&
-    budgetSummary.currency &&
-    costSummary.currency === budgetSummary.currency &&
-    costSummary.total > budgetSummary.max,
-  );
+  const overBudget = costSummary
+    ? computeIsOverBudget(costSummary, budgetSummary ?? null)
+    : false;
 
   return (
     <>
-      {/* Date Badge */}
-      <Button
-        variant="outline"
-        className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white"
-      >
+      <Badge variant="outline" className={chipClass}>
         <Calendar className="w-4 h-4 mr-2 text-cyan-400" />
         <span>
-          {format(new Date(trip.startDate), "MMM d")} -{" "}
-          {format(new Date(trip.endDate), "MMM d")}
+          {format(trip.startDate, "MMM d")} - {format(trip.endDate, "MMM d")}
         </span>
-      </Button>
+      </Badge>
 
-      {/* Budget Badge */}
-      <Button
-        variant="outline"
-        className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white"
-      >
+      <Badge variant="outline" className={chipClass}>
         <Wallet className="w-4 h-4 mr-2 text-cyan-400" />
         Budget: {budgetLabel}
-      </Button>
+      </Badge>
 
-      {/* Estimated Total Badge */}
-      <Button
+      <Badge
         variant="outline"
         className={cn(
-          "bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white",
-          isOverBudget && "border-rose-400/40 text-rose-100",
+          chipClass,
+          overBudget && "border-rose-400/40 text-rose-100",
         )}
       >
         <Wallet
           className={cn(
             "w-4 h-4 mr-2 text-cyan-400",
-            isOverBudget && "text-rose-300",
+            overBudget && "text-rose-300",
           )}
         />
         Est. Total: {costLabel}
-        {isOverBudget && (
-          <AlertTriangle className="w-4 h-4 ml-2 text-rose-300" />
-        )}
-      </Button>
+        {overBudget && <AlertTriangle className="w-4 h-4 ml-2 text-rose-300" />}
+      </Badge>
 
-      {/* Interests Badge */}
-      <Button
-        variant="outline"
-        className="bg-black/20 backdrop-blur-sm border-white/10 hover:bg-black/40 text-white max-[400px]:max-w-50"
-      >
-        <MapPin className="w-4 h-4 mr-2 text-cyan-400" />
-        <span className="truncate max-w-50 md:max-w-none max-[400px]:max-w-50 ">
-          {trip.interests.join(", ")}
-        </span>
-      </Button>
+      {trip.interests.length > 0 && (
+        <Badge
+          variant="outline"
+          className={cn(chipClass, "max-[400px]:max-w-50")}
+        >
+          <MapPin className="w-4 h-4 mr-2 text-cyan-400" />
+          <span className="truncate max-w-50 md:max-w-none">
+            {trip.interests.join(", ")}
+          </span>
+        </Badge>
+      )}
     </>
   );
 };

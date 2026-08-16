@@ -15,14 +15,11 @@ export const ActivityCard = ({ activity }: { activity: Activity }) => {
   const title = activity.title ?? activity.placeName ?? "Activity";
   const timeLabel = activity.time?.trim() || "Time TBD";
   const description = activity.description?.trim() || "Details coming soon.";
-  const costLabel = formatEstimatedCostLabel(activity.estimatedCost);
+  const costLabel = formatEstimatedCostLabel(activity);
 
   return (
     <>
-      <Card
-        key={activity.id}
-        className="mb-4 p-4 w-full bg-hero border-hero-border shadow-xl"
-      >
+      <Card className="mb-4 p-4 w-full bg-hero border-hero-border shadow-xl">
         <CardHeader className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div>

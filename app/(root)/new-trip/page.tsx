@@ -3,8 +3,8 @@ import { auth } from "@/auth";
 
 const CreateNewTrip = async () => {
   const session = await auth();
-  if(!session?.user){
-    return <div>Please log in to create a new trip.</div> //remake later
+  if (!session?.user) {
+    return <div>Please log in to create a new trip.</div>; //remake later
   }
   return (
     <div className="m-10">

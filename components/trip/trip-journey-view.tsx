@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   formatBudgetRange,
   formatCostSummary,
+  isOverBudget as computeIsOverBudget,
   summarizeCosts,
 } from "@/lib/cost";
 import {
@@ -12,7 +13,7 @@ import {
   sortActivitiesByManualOrder,
   type ActivitySortMode,
 } from "@/lib/itinerary";
-import { Activity, Trip } from "@prisma/client";
+import { Activity } from "@prisma/client";
 import { AlertTriangle, ArrowDownUp } from "lucide-react";
 import { useMemo, useRef, useState, useTransition } from "react";
 import TripItinerary from "./trip-itinerary";
@@ -36,7 +37,6 @@ import { type BudgetRange, type CostSummary } from "@/lib/cost";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type TripJourneyViewProps = {
-  trip: Trip;
   day: {
     activities: Activity[];
     summary?: string | null;
@@ -83,7 +83,6 @@ const parseManualOrder = (value: string | null, activities: Activity[]) => {
 };
 
 const TripJourneyView = ({
-  trip,
   day,
   dayIndex,
   budgetSummary,
@@ -138,21 +137,16 @@ const TripJourneyView = ({
     });
   };
 
-  const visibleCostSummary = useMemo(() => {
-    return summarizeCosts(
-      visibleActivities.map((activity) => activity.estimatedCost),
-    );
-  }, [visibleActivities]);
+  const visibleCostSummary = useMemo(
+    () => summarizeCosts(visibleActivities),
+    [visibleActivities],
+  );
 
-  const budgetLimit = budgetSummary?.max ?? null;
-  const isOverBudget =
-    budgetLimit != null &&
-    visibleCostSummary.hasValues &&
-    !visibleCostSummary.hasMixedCurrency &&
-    visibleCostSummary.total > budgetLimit;
+  const budgetLimitCents = budgetSummary ? budgetSummary.max * 100 : null;
+  const isOverBudget = computeIsOverBudget(visibleCostSummary, budgetSummary);
   const budgetUsage =
-    budgetLimit && budgetLimit > 0
-      ? Math.min(visibleCostSummary.total / budgetLimit, 2)
+    budgetLimitCents && budgetLimitCents > 0
+      ? Math.min(visibleCostSummary.totalCents / budgetLimitCents, 2)
       : 0;
   const budgetTone = isOverBudget
     ? "red"
@@ -250,7 +244,7 @@ const TripJourneyView = ({
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium text-white">Day budget:</span>
           <span className="text-white/80">
-            {formatBudgetRange(budgetSummary) || trip.budget || "N/A"}
+            {formatBudgetRange(budgetSummary)}
           </span>
           <span className="font-medium text-white">Trip total:</span>
           <span className="text-white/80">

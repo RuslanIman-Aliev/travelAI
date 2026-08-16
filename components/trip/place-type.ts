@@ -71,8 +71,13 @@ const fallbackMeta: PlaceTypeMeta = {
   chipClass: "border border-slate-400/30 bg-slate-500/10",
 };
 
-export const placeTypeLegend = placeTypeList;
-
+/**
+ * Resolves display metadata (label, icon, colours) for an activity place type,
+ * falling back to a neutral "Activity" when the type is missing or unknown.
+ *
+ * @param {string|null} [placeType] - The stored place type.
+ * @returns {PlaceTypeMeta} Metadata for rendering the type.
+ */
 export const getPlaceTypeMeta = (placeType?: string | null) => {
   if (!placeType) return fallbackMeta;
   const key = placeType.toLowerCase().trim();

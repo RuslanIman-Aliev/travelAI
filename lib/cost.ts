@@ -1,13 +1,34 @@
+/**
+ * Cost handling is split in two halves on purpose:
+ *
+ * - `parseCostString` runs **once**, on the ingestion path, when the model hands
+ *   us free text like "20 EUR". Its output is persisted as integer minor units.
+ * - Everything else is pure display formatting over already-structured data, so
+ *   no regex runs while rendering a page.
+ */
+
+/** The cost columns every activity carries. Structural so tests can fake it. */
+export type ActivityCost = {
+  estimatedCostCents: number | null;
+  estimatedCostCurrency: string | null;
+  estimatedCostIsFree: boolean;
+};
+
+/** The budget columns a trip carries. */
+export type TripBudget = {
+  budgetMin: number | null;
+  budgetMax: number | null;
+  budgetCurrency: string | null;
+};
+
 export type ParsedCost = {
-  amount: number | null;
+  cents: number | null;
   currency: string | null;
   isFree: boolean;
-  isUnknown: boolean;
-  label: string;
 };
 
 export type CostSummary = {
-  total: number;
+  totalCents: number;
   currency: string | null;
   hasMixedCurrency: boolean;
   hasUnknown: boolean;
@@ -18,220 +39,177 @@ export type BudgetRange = {
   min: number;
   max: number;
   currency: string | null;
-  raw?: string;
 };
 
 const numberPattern = /(\d+(?:[.,]\d+)?)/;
 const currencyPattern = /\b[A-Za-z]{3}\b/;
+const freeMarkers = ["free", "no cost"];
 
 /**
- * Normalizes a number string by replacing commas with dots and converting it to a finite number.
+ * Renders a minor-unit amount as a decimal string, hiding an empty fraction.
  *
- * @param {string} value - The numerical string to normalize.
- * @returns {number|null} The parsed finite number, or null if the parsing fails.
+ * @param {number} cents - Amount in integer minor units.
+ * @returns {string} e.g. `2000` -> `"20"`, `2050` -> `"20.5"`.
  */
-const normalizeNumber = (value: string) => {
-  const normalized = value.replace(",", ".");
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : null;
+const formatMinorUnits = (cents: number) => {
+  const major = cents / 100;
+  return Number.isInteger(major) ? major.toString() : major.toFixed(2);
 };
 
 /**
- * Formats a number to a string, rounding it to two decimal places if it's not an integer.
+ * Parses a free-text cost produced by the model into structured values.
+ * Intended for the ingestion path only - never call this while rendering.
  *
- * @param {number} value - The numerical value to format.
- * @returns {string} The formatted number as a string.
+ * @param {string|null} [value] - Raw cost text, e.g. `"20 EUR"` or `"Free"`.
+ * @returns {ParsedCost} Minor units, ISO-ish currency code, and a free flag.
  */
-const formatNumber = (value: number) => {
-  if (Number.isInteger(value)) return value.toString();
-  const rounded = Math.round(value * 100) / 100;
-  return rounded.toString();
-};
-
-/**
- * Parses a string representing an estimated cost into a structured `ParsedCost` object.
- *
- * @param {string|null} [value] - The raw cost string to parse.
- * @returns {ParsedCost} An object containing the parsed amount, currency, and flags indicating if it's free or ambiguous.
- */
-export const parseEstimatedCost = (value?: string | null): ParsedCost => {
-  if (!value) {
-    return {
-      amount: null,
-      currency: null,
-      isFree: false,
-      isUnknown: true,
-      label: "N/A",
-    };
-  }
-
-  const trimmed = value.trim();
+export const parseCostString = (value?: string | null): ParsedCost => {
+  const trimmed = value?.trim();
   if (!trimmed) {
-    return {
-      amount: null,
-      currency: null,
-      isFree: false,
-      isUnknown: true,
-      label: "N/A",
-    };
+    return { cents: null, currency: null, isFree: false };
   }
 
   const lower = trimmed.toLowerCase();
-  if (lower.includes("free") || lower.includes("no cost")) {
-    return {
-      amount: 0,
-      currency: null,
-      isFree: true,
-      isUnknown: false,
-      label: "Free",
-    };
+  if (freeMarkers.some((marker) => lower.includes(marker))) {
+    return { cents: 0, currency: null, isFree: true };
   }
 
-  const amountMatch = trimmed.match(numberPattern);
-  const amount = amountMatch ? normalizeNumber(amountMatch[1]) : null;
   const currencyMatch = trimmed.match(currencyPattern);
   const currency = currencyMatch ? currencyMatch[0].toUpperCase() : null;
 
-  if (amount === null) {
-    return {
-      amount: null,
-      currency,
-      isFree: false,
-      isUnknown: true,
-      label: trimmed,
-    };
+  const amountMatch = trimmed.match(numberPattern);
+  if (!amountMatch) {
+    return { cents: null, currency, isFree: false };
   }
 
-  const label = currency
-    ? `${formatNumber(amount)} ${currency}`
-    : formatNumber(amount);
+  const amount = Number(amountMatch[1].replace(",", "."));
+  if (!Number.isFinite(amount)) {
+    return { cents: null, currency, isFree: false };
+  }
 
-  return {
-    amount,
-    currency,
-    isFree: amount === 0,
-    isUnknown: false,
-    label,
-  };
+  const cents = Math.round(amount * 100);
+  return { cents, currency, isFree: cents === 0 };
 };
 
 /**
- * Consolidates the parsing logic to return a user-friendly label for an estimated cost string.
+ * Formats a single activity's persisted cost for display.
  *
- * @param {string|null} [value] - The raw cost string to format.
- * @returns {string} The formatted label for the estimated cost.
+ * @param {ActivityCost} activity - An entity carrying the cost columns.
+ * @returns {string} `"Free"`, `"20 EUR"`, `"20"`, or `"N/A"` when unknown.
  */
-export const formatEstimatedCostLabel = (value?: string | null) => {
-  const parsed = parseEstimatedCost(value);
-  if (parsed.isFree) return "Free";
-  if (parsed.isUnknown) return value?.trim() || "N/A";
-  return parsed.label;
+export const formatEstimatedCostLabel = (activity: ActivityCost) => {
+  if (activity.estimatedCostIsFree) return "Free";
+  if (activity.estimatedCostCents == null) return "N/A";
+
+  const amount = formatMinorUnits(activity.estimatedCostCents);
+  return activity.estimatedCostCurrency
+    ? `${amount} ${activity.estimatedCostCurrency}`
+    : amount;
 };
 
 /**
- * Computes a summary from an array of estimated cost strings, aggregating totals and currencies.
+ * Totals the persisted costs of a set of activities.
  *
- * @param {Array<string|null|undefined>} values - A list of individual cost strings to summarize.
- * @returns {CostSummary} An object holding the total cost and boolean flags for unknowns and mixed currencies.
+ * @param {ActivityCost[]} activities - Activities to aggregate.
+ * @returns {CostSummary} Total in minor units plus mixed-currency/unknown flags.
  */
-export const summarizeCosts = (
-  values: Array<string | null | undefined>,
-): CostSummary => {
-  let total = 0;
+export const summarizeCosts = (activities: ActivityCost[]): CostSummary => {
+  let totalCents = 0;
   let currency: string | null = null;
   let hasMixedCurrency = false;
   let hasUnknown = false;
   let hasValues = false;
 
-  values.forEach((value) => {
-    const parsed = parseEstimatedCost(value);
-
-    if (parsed.isUnknown) {
-      if (value) hasUnknown = true;
-      return;
+  for (const activity of activities) {
+    if (activity.estimatedCostCents == null) {
+      hasUnknown = true;
+      continue;
     }
 
     hasValues = true;
-    total += parsed.amount ?? 0;
+    totalCents += activity.estimatedCostCents;
 
-    if (parsed.currency) {
-      if (!currency) {
-        currency = parsed.currency;
-      } else if (currency !== parsed.currency) {
-        hasMixedCurrency = true;
-      }
+    if (!activity.estimatedCostCurrency) continue;
+
+    if (!currency) {
+      currency = activity.estimatedCostCurrency;
+    } else if (currency !== activity.estimatedCostCurrency) {
+      hasMixedCurrency = true;
     }
-  });
+  }
 
-  return {
-    total: Math.round(total * 100) / 100,
-    currency,
-    hasMixedCurrency,
-    hasUnknown,
-    hasValues,
-  };
+  return { totalCents, currency, hasMixedCurrency, hasUnknown, hasValues };
 };
 
 /**
- * Formats a `CostSummary` object into a readable short string for UI display.
+ * Formats an aggregated cost summary for display.
  *
- * @param {CostSummary} summary - The structured cost summary to format.
- * @returns {string} A user-facing string summarizing the costs.
+ * @param {CostSummary} summary - The summary to render.
+ * @returns {string} A short user-facing label.
  */
 export const formatCostSummary = (summary: CostSummary) => {
   if (!summary.hasValues) return "N/A";
-  if (summary.total === 0 && !summary.hasUnknown) return "Free";
   if (summary.hasMixedCurrency) return "Mixed currencies";
+  if (summary.totalCents === 0 && !summary.hasUnknown) return "Free";
 
-  const totalLabel = formatNumber(summary.total);
-  const base = summary.currency
-    ? `${totalLabel} ${summary.currency}`
-    : totalLabel;
+  const amount = formatMinorUnits(summary.totalCents);
+  const base = summary.currency ? `${amount} ${summary.currency}` : amount;
 
-  if (summary.hasUnknown) return `${base}+`;
-  return base;
+  return summary.hasUnknown ? `${base}+` : base;
 };
 
 /**
- * Parses a budget range string into maximum, minimum values, and currency.
+ * Reads a trip's budget columns into a range, or null when no budget was set.
  *
- * @param {string|null} [budget] - The raw budget string to parse.
- * @returns {BudgetRange|null} A struct containing min, max, and currency, or null if parsing fails.
+ * @param {TripBudget} trip - An entity carrying the budget columns.
+ * @returns {BudgetRange|null} The structured range, or null when unset.
  */
-export const parseBudgetRange = (
-  budget?: string | null,
-): BudgetRange | null => {
-  if (!budget) return null;
-  const matches = budget.match(/\d+(?:[.,]\d+)?/g);
-  if (!matches || matches.length === 0) return null;
+export const getBudgetRange = (trip: TripBudget): BudgetRange | null => {
+  if (trip.budgetMin == null && trip.budgetMax == null) return null;
 
-  const numbers = matches
-    .map((match) => normalizeNumber(match))
-    .filter((value): value is number => value !== null);
+  const min = trip.budgetMin ?? trip.budgetMax ?? 0;
+  const max = trip.budgetMax ?? trip.budgetMin ?? 0;
 
-  if (numbers.length === 0) return null;
-
-  const currencyMatch = budget.match(currencyPattern);
-  const currency = currencyMatch ? currencyMatch[0].toUpperCase() : null;
-
-  return {
-    min: numbers[0],
-    max: numbers[numbers.length - 1],
-    currency,
-    raw: budget,
-  };
+  return { min, max, currency: trip.budgetCurrency };
 };
 
 /**
- * Formats a `BudgetRange` object natively to a human-readable string representation.
+ * Formats a budget range for display.
  *
- * @param {BudgetRange|null} budget - The budget struct to format.
- * @returns {string} The formatted budget label.
+ * @param {BudgetRange|null} budget - The range to render.
+ * @returns {string} e.g. `"200-800 USD"`, or `"N/A"` when there is no budget.
  */
 export const formatBudgetRange = (budget: BudgetRange | null) => {
   if (!budget) return "N/A";
-  const minLabel = formatNumber(budget.min);
-  const maxLabel = formatNumber(budget.max);
-  const base = budget.min === budget.max ? minLabel : `${minLabel}-${maxLabel}`;
+
+  const base =
+    budget.min === budget.max
+      ? budget.min.toString()
+      : `${budget.min}-${budget.max}`;
+
   return budget.currency ? `${base} ${budget.currency}` : base;
+};
+
+/**
+ * Decides whether a summary exceeds a budget. Returns false when the two use
+ * different currencies, since comparing them would be meaningless.
+ *
+ * @param {CostSummary} summary - Aggregated activity costs.
+ * @param {BudgetRange|null} budget - The trip's budget range.
+ * @returns {boolean} True only when a like-for-like comparison exceeds the max.
+ */
+export const isOverBudget = (
+  summary: CostSummary,
+  budget: BudgetRange | null,
+) => {
+  if (!budget || !summary.hasValues || summary.hasMixedCurrency) return false;
+  if (
+    summary.currency &&
+    budget.currency &&
+    summary.currency !== budget.currency
+  ) {
+    return false;
+  }
+
+  return summary.totalCents > budget.max * 100;
 };

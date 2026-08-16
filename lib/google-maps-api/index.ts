@@ -2,92 +2,41 @@
 
 import { GooglePlaceForLive, MappedPlace } from "../types";
 
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAP_API;
+const SEARCH_NEARBY_URL =
+  "https://places.googleapis.com/v1/places:searchNearby";
 
-export async function getGoogleNearbyPlaces(
-  lat: number,
-  lng: number,
-  radiusInMeters: number,
-): Promise<MappedPlace[]> {
-  try {
-    const url = "https://places.googleapis.com/v1/places:searchNearby";
-    // 1. Define the types of places to include
-    const includedTypes = [
-      "tourist_attraction",
-      "museum",
-      "art_gallery",
-      "historical_landmark",
-      "restaurant",
-      "cafe",
-      "park",
-    ];
+const INCLUDED_TYPES = [
+  "tourist_attraction",
+  "museum",
+  "art_gallery",
+  "historical_landmark",
+  "restaurant",
+  "cafe",
+  "park",
+];
 
-    // 2. Prepare the Request Body
-    const requestBody = {
-      includedTypes: includedTypes,
-      maxResultCount: 20,
-      locationRestriction: {
-        circle: {
-          center: {
-            latitude: lat,
-            longitude: lng,
-          },
-          radius: radiusInMeters,
-        },
-      },
-      rankPreference: "POPULARITY",
-    };
+const FIELD_MASK = [
+  "places.id",
+  "places.displayName",
+  "places.formattedAddress",
+  "places.primaryType",
+  "places.rating",
+  "places.userRatingCount",
+  "places.location",
+].join(",");
 
-    // 3. Call the API
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": API_KEY || "",
-        "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.primaryType,places.rating,places.userRatingCount,places.location",
-      },
-      body: JSON.stringify(requestBody),
-    });
+const EARTH_RADIUS_KM = 6371;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Google Places API Error:", errorData);
-      throw new Error("Failed to fetch places");
-    }
+export type NearbyPlacesResult =
+  | { success: true; places: MappedPlace[] }
+  | { success: false; message: string };
 
-    const data = await response.json();
-
-    // 4. Map the data
-    const places: MappedPlace[] = (data.places || []).map(
-      (place: GooglePlaceForLive) => ({
-        id: place.id,
-        name: place.displayName?.text || "Unknown Place",
-        address: place.formattedAddress || "Address not available",
-        category: formatCategory(place.primaryType), // Helper function below
-        rating: place.rating || 0,
-        distance: calculateDistance(
-          lat,
-          lng,
-          place.location.latitude,
-          place.location.longitude,
-        ),
-        userRatingCount: place.userRatingCount || 0,
-        location: {
-          lat: place.location.latitude,
-          lng: place.location.longitude,
-        },
-      }),
-    );
-
-    return places;
-  } catch (error) {
-    console.error("Error fetching Google places:", error);
-    return [];
-  }
-}
-
-// Helper to make categories look nice (e.g., "art_gallery" -> "Art Gallery")
+/**
+ * Turns a Places `primaryType` into a display label, e.g. `art_gallery` -> `Art Gallery`.
+ *
+ * @param {string} type - The raw place type from the API.
+ * @returns {string} A human-readable category.
+ */
 function formatCategory(type: string): string {
   if (!type) return "General";
   return type
@@ -96,22 +45,119 @@ function formatCategory(type: string): string {
     .join(" ");
 }
 
+/**
+ * Great-circle distance between two coordinate pairs (Haversine).
+ *
+ * @param {number} lat1 - Origin latitude.
+ * @param {number} lon1 - Origin longitude.
+ * @param {number} lat2 - Target latitude.
+ * @param {number} lon2 - Target longitude.
+ * @returns {number} Distance in kilometres, rounded to one decimal.
+ */
 function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number,
 ): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLon / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distance in km
-  return parseFloat(distance.toFixed(1));
+
+  return parseFloat((EARTH_RADIUS_KM * c).toFixed(1));
+}
+
+/**
+ * Searches Google Places for points of interest around a coordinate.
+ *
+ * Uses a server-only key (never `NEXT_PUBLIC_`), and reports failures instead of
+ * returning an empty list - the previous version made a rejected API key look
+ * identical to "there is nothing near you".
+ *
+ * @param {number} lat - Search centre latitude.
+ * @param {number} lng - Search centre longitude.
+ * @param {number} radiusInMeters - Search radius in metres.
+ * @returns {Promise<NearbyPlacesResult>} The mapped places, or a failure message.
+ */
+export async function getGoogleNearbyPlaces(
+  lat: number,
+  lng: number,
+  radiusInMeters: number,
+): Promise<NearbyPlacesResult> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) {
+    console.error("GOOGLE_PLACES_API_KEY is not configured");
+    return { success: false, message: "Place search is not configured." };
+  }
+
+  try {
+    const response = await fetch(SEARCH_NEARBY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": FIELD_MASK,
+      },
+      body: JSON.stringify({
+        includedTypes: INCLUDED_TYPES,
+        maxResultCount: 20,
+        locationRestriction: {
+          circle: {
+            center: { latitude: lat, longitude: lng },
+            radius: radiusInMeters,
+          },
+        },
+        rankPreference: "POPULARITY",
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        "Google Places API error:",
+        response.status,
+        await response.text(),
+      );
+      return {
+        success: false,
+        message: "Could not reach the place search service.",
+      };
+    }
+
+    const data = await response.json();
+
+    const places: MappedPlace[] = (data.places ?? []).map(
+      (place: GooglePlaceForLive) => ({
+        id: place.id,
+        name: place.displayName?.text || "Unknown Place",
+        address: place.formattedAddress || "Address not available",
+        category: formatCategory(place.primaryType),
+        rating: place.rating ?? 0,
+        userRatingCount: place.userRatingCount ?? 0,
+        distance: calculateDistance(
+          lat,
+          lng,
+          place.location.latitude,
+          place.location.longitude,
+        ),
+        location: {
+          lat: place.location.latitude,
+          lng: place.location.longitude,
+        },
+      }),
+    );
+
+    return { success: true, places };
+  } catch (error) {
+    console.error("Error fetching Google places:", error);
+    return {
+      success: false,
+      message: "Could not reach the place search service.",
+    };
+  }
 }

@@ -599,6 +599,12 @@ function SidebarMenuBadge({
   )
 }
 
+// Varied widths so a column of skeleton rows does not look like a solid block.
+// The shadcn default picks these with `Math.random()` during render, which is
+// impure and differs between the server and client renders; cycling a fixed
+// list with `useId` keeps the variety while staying deterministic.
+const SKELETON_WIDTHS = ["50%", "60%", "70%", "80%", "90%"] as const
+
 function SidebarMenuSkeleton({
   className,
   showIcon = false,
@@ -606,10 +612,14 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean
 }) {
-  // Random width between 50 to 90%.
+  const id = React.useId()
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`
-  }, [])
+    let hash = 0
+    for (let i = 0; i < id.length; i += 1) {
+      hash = (hash * 31 + id.charCodeAt(i)) | 0
+    }
+    return SKELETON_WIDTHS[Math.abs(hash) % SKELETON_WIDTHS.length]
+  }, [id])
 
   return (
     <div

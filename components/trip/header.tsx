@@ -1,9 +1,10 @@
 import { type BudgetRange, type CostSummary } from "@/lib/cost";
+import { FALLBACK_TRIP_IMAGE } from "@/lib/variables";
 import { Trip } from "@prisma/client";
 import Image from "next/image";
 import Badges from "./badges";
 
-const TripHeader = async ({
+const TripHeader = ({
   trip,
   costSummary,
   budgetSummary,
@@ -12,30 +13,26 @@ const TripHeader = async ({
   costSummary: CostSummary;
   budgetSummary: BudgetRange | null;
 }) => {
-  const bgImage = trip.imageUrl!;
-
   return (
-    <div className="relative w-full h-75 md:h-100  rounded-md overflow-hidden dark:bg-slate-900 bg-slate-50">
-      {/* Background Image */}
+    <div className="relative w-full h-75 md:h-100 rounded-md overflow-hidden dark:bg-slate-900 bg-slate-50">
       <Image
-        src={bgImage}
+        // `imageUrl` is genuinely nullable - a Pexels miss leaves it unset - so
+        // it needs a fallback rather than a non-null assertion.
+        src={trip.imageUrl ?? FALLBACK_TRIP_IMAGE}
         alt={`Trip to ${trip.destination}`}
         fill
+        sizes="100vw"
         className="object-cover object-center opacity-90"
         priority
       />
 
-      {/*  Dark Overlay */}
       <div className="absolute inset-0 bg-linear-to-b from-transparent dark:bg-[linear-gradient(to_right,#09090bCC,#232328cc)]" />
 
-      {/*  Content Container (Centered) */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 p-4 gap-8">
-        {/* Title */}
         <h1 className="text-4xl md:text-6xl font-bold dark:text-white text-slate-900 drop-shadow-lg">
           Trip to <span className="text-cyan-400">{trip.destination}</span>
         </h1>
 
-        {/* Buttons Row */}
         <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
           <Badges
             trip={trip}

@@ -2,142 +2,216 @@ import {
   formatBudgetRange,
   formatCostSummary,
   formatEstimatedCostLabel,
-  parseBudgetRange,
-  parseEstimatedCost,
+  getBudgetRange,
+  isOverBudget,
+  parseCostString,
   summarizeCosts,
+  type ActivityCost,
 } from "@/lib/cost";
 
-describe("cost helpers", () => {
-  describe("parseEstimatedCost", () => {
-    it("parses free values", () => {
-      expect(parseEstimatedCost("Free")).toEqual({
-        amount: 0,
-        currency: null,
-        isFree: true,
-        isUnknown: false,
-        label: "Free",
-      });
+const cost = (overrides: Partial<ActivityCost> = {}): ActivityCost => ({
+  estimatedCostCents: null,
+  estimatedCostCurrency: null,
+  estimatedCostIsFree: false,
+  ...overrides,
+});
 
-      expect(parseEstimatedCost("no cost")).toMatchObject({
-        isFree: true,
-        amount: 0,
-      });
+describe("parseCostString", () => {
+  it("recognises free values", () => {
+    expect(parseCostString("Free")).toEqual({
+      cents: 0,
+      currency: null,
+      isFree: true,
     });
-
-    it("parses amount and currency", () => {
-      expect(parseEstimatedCost("20 eur")).toEqual({
-        amount: 20,
-        currency: "EUR",
-        isFree: false,
-        isUnknown: false,
-        label: "20 EUR",
-      });
-    });
-
-    it("returns unknown for empty or non numeric values", () => {
-      expect(parseEstimatedCost(undefined)).toMatchObject({
-        isUnknown: true,
-        label: "N/A",
-      });
-
-      expect(parseEstimatedCost("depends on season")).toMatchObject({
-        isUnknown: true,
-        label: "depends on season",
-      });
+    expect(parseCostString("no cost")).toMatchObject({
+      isFree: true,
+      cents: 0,
     });
   });
 
-  describe("formatEstimatedCostLabel", () => {
-    it("formats known and unknown labels", () => {
-      expect(formatEstimatedCostLabel("24 usd")).toBe("24 USD");
-      expect(formatEstimatedCostLabel("Free")).toBe("Free");
-      expect(formatEstimatedCostLabel("")).toBe("N/A");
+  it("parses amount and currency into minor units", () => {
+    expect(parseCostString("20 eur")).toEqual({
+      cents: 2000,
+      currency: "EUR",
+      isFree: false,
     });
   });
 
-  describe("summarizeCosts", () => {
-    it("summarizes same-currency values", () => {
-      const summary = summarizeCosts(["10 EUR", "5 eur", "Free"]);
+  it("handles comma decimal separators", () => {
+    expect(parseCostString("12,50 USD")).toMatchObject({ cents: 1250 });
+  });
 
-      expect(summary).toEqual({
-        total: 15,
-        currency: "EUR",
-        hasMixedCurrency: false,
-        hasUnknown: false,
-        hasValues: true,
-      });
+  it("returns a null amount for empty or non-numeric values", () => {
+    expect(parseCostString(undefined)).toEqual({
+      cents: null,
+      currency: null,
+      isFree: false,
     });
+    expect(parseCostString("depends on season")).toMatchObject({ cents: null });
+  });
+});
 
-    it("flags mixed currency and unknown costs", () => {
-      const summary = summarizeCosts(["10 EUR", "8 USD", "depends"]);
+describe("formatEstimatedCostLabel", () => {
+  it("formats free, priced and unknown activities", () => {
+    expect(formatEstimatedCostLabel(cost({ estimatedCostIsFree: true }))).toBe(
+      "Free",
+    );
+    expect(
+      formatEstimatedCostLabel(
+        cost({ estimatedCostCents: 2400, estimatedCostCurrency: "USD" }),
+      ),
+    ).toBe("24 USD");
+    expect(formatEstimatedCostLabel(cost())).toBe("N/A");
+  });
 
-      expect(summary.total).toBe(18);
-      expect(summary.hasMixedCurrency).toBe(true);
-      expect(summary.hasUnknown).toBe(true);
-      expect(summary.hasValues).toBe(true);
+  it("keeps a fractional amount readable", () => {
+    expect(
+      formatEstimatedCostLabel(
+        cost({ estimatedCostCents: 1250, estimatedCostCurrency: "EUR" }),
+      ),
+    ).toBe("12.50 EUR");
+  });
+});
+
+describe("summarizeCosts", () => {
+  it("totals same-currency values", () => {
+    const summary = summarizeCosts([
+      cost({ estimatedCostCents: 1000, estimatedCostCurrency: "EUR" }),
+      cost({ estimatedCostCents: 500, estimatedCostCurrency: "EUR" }),
+      cost({ estimatedCostCents: 0, estimatedCostIsFree: true }),
+    ]);
+
+    expect(summary).toEqual({
+      totalCents: 1500,
+      currency: "EUR",
+      hasMixedCurrency: false,
+      hasUnknown: false,
+      hasValues: true,
     });
   });
 
-  describe("formatCostSummary", () => {
-    it("formats totals with status suffixes", () => {
-      expect(
-        formatCostSummary({
-          total: 0,
-          currency: null,
-          hasMixedCurrency: false,
-          hasUnknown: false,
-          hasValues: false,
-        }),
-      ).toBe("N/A");
+  it("flags mixed currency and unknown costs", () => {
+    const summary = summarizeCosts([
+      cost({ estimatedCostCents: 1000, estimatedCostCurrency: "EUR" }),
+      cost({ estimatedCostCents: 800, estimatedCostCurrency: "USD" }),
+      cost(),
+    ]);
 
-      expect(
-        formatCostSummary({
-          total: 0,
-          currency: null,
-          hasMixedCurrency: false,
-          hasUnknown: false,
-          hasValues: true,
-        }),
-      ).toBe("Free");
+    expect(summary.totalCents).toBe(1800);
+    expect(summary.hasMixedCurrency).toBe(true);
+    expect(summary.hasUnknown).toBe(true);
+    expect(summary.hasValues).toBe(true);
+  });
+});
 
-      expect(
-        formatCostSummary({
-          total: 24,
+describe("formatCostSummary", () => {
+  const summary = (overrides = {}) => ({
+    totalCents: 0,
+    currency: null,
+    hasMixedCurrency: false,
+    hasUnknown: false,
+    hasValues: false,
+    ...overrides,
+  });
+
+  it("formats totals with status suffixes", () => {
+    expect(formatCostSummary(summary())).toBe("N/A");
+    expect(formatCostSummary(summary({ hasValues: true }))).toBe("Free");
+    expect(
+      formatCostSummary(
+        summary({
+          totalCents: 2400,
           currency: "EUR",
+          hasValues: true,
           hasMixedCurrency: true,
-          hasUnknown: false,
-          hasValues: true,
         }),
-      ).toBe("Mixed currencies");
-
-      expect(
-        formatCostSummary({
-          total: 24,
+      ),
+    ).toBe("Mixed currencies");
+    expect(
+      formatCostSummary(
+        summary({
+          totalCents: 2400,
           currency: "EUR",
-          hasMixedCurrency: false,
-          hasUnknown: true,
           hasValues: true,
+          hasUnknown: true,
         }),
-      ).toBe("24 EUR+");
+      ),
+    ).toBe("24 EUR+");
+  });
+});
+
+describe("budget helpers", () => {
+  it("reads a budget range off the trip columns", () => {
+    const range = getBudgetRange({
+      budgetMin: 200,
+      budgetMax: 800,
+      budgetCurrency: "USD",
     });
+
+    expect(range).toEqual({ min: 200, max: 800, currency: "USD" });
+    expect(formatBudgetRange(range)).toBe("200-800 USD");
   });
 
-  describe("budget helpers", () => {
-    it("parses and formats budget range", () => {
-      const parsed = parseBudgetRange("200-800 eur");
-      expect(parsed).toEqual({
-        min: 200,
-        max: 800,
-        currency: "EUR",
-        raw: "200-800 eur",
-      });
+  it("returns null when no budget was captured", () => {
+    expect(
+      getBudgetRange({
+        budgetMin: null,
+        budgetMax: null,
+        budgetCurrency: null,
+      }),
+    ).toBeNull();
+    expect(formatBudgetRange(null)).toBe("N/A");
+  });
 
-      expect(formatBudgetRange(parsed)).toBe("200-800 EUR");
+  it("collapses an equal min and max", () => {
+    const range = getBudgetRange({
+      budgetMin: 500,
+      budgetMax: 500,
+      budgetCurrency: null,
     });
 
-    it("returns null for invalid budget and N/A for empty format", () => {
-      expect(parseBudgetRange("budget unknown")).toBeNull();
-      expect(formatBudgetRange(null)).toBe("N/A");
-    });
+    expect(formatBudgetRange(range)).toBe("500");
+  });
+});
+
+describe("isOverBudget", () => {
+  const budget = { min: 0, max: 100, currency: "USD" };
+
+  it("flags a same-currency total above the maximum", () => {
+    const summary = summarizeCosts([
+      cost({ estimatedCostCents: 15_000, estimatedCostCurrency: "USD" }),
+    ]);
+
+    expect(isOverBudget(summary, budget)).toBe(true);
+  });
+
+  it("does not flag a total within budget", () => {
+    const summary = summarizeCosts([
+      cost({ estimatedCostCents: 5_000, estimatedCostCurrency: "USD" }),
+    ]);
+
+    expect(isOverBudget(summary, budget)).toBe(false);
+  });
+
+  it("refuses to compare across currencies", () => {
+    const summary = summarizeCosts([
+      cost({ estimatedCostCents: 15_000, estimatedCostCurrency: "JPY" }),
+    ]);
+
+    expect(isOverBudget(summary, budget)).toBe(false);
+  });
+
+  it("is false when there is no budget or no costs", () => {
+    const summary = summarizeCosts([cost()]);
+
+    expect(isOverBudget(summary, budget)).toBe(false);
+    expect(
+      isOverBudget(
+        summarizeCosts([
+          cost({ estimatedCostCents: 999_999, estimatedCostCurrency: "USD" }),
+        ]),
+        null,
+      ),
+    ).toBe(false);
   });
 });

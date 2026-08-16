@@ -24,13 +24,28 @@ test.describe("Trip flow", () => {
       "DATABASE_URL is required for e2e tests",
     );
 
-    await page.route("**/api/start-trip", async (route) => {
+    // Stub the generation endpoint so the flow stays deterministic without a
+    // running Inngest dev server or a real Gemini call.
+    await page.route("**/api/trips/*/generation", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({
+          status: 202,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: true,
+            message: "Background job started",
+          }),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
           success: true,
-          message: "Background job started",
+          status: "generating",
+          aiGenerated: false,
         }),
       });
     });

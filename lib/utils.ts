@@ -1,8 +1,11 @@
 import { Prisma, type Trip } from "@prisma/client";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { PEXELS_API_KEY } from "./variables";
 import { ZodError } from "zod";
+import { formatBudgetRange, getBudgetRange } from "./cost";
+import { UserFacingError } from "./errors";
+
+const PEXELS_SEARCH_URL = "https://api.pexels.com/v1/search";
 
 /**
  * Utility function to conditionally merge Tailwind CSS classes using `clsx` and `tailwind-merge`.
@@ -16,13 +19,21 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Formats various errors (Zod validation, Prisma, generic errors) into a user-friendly string message.
+ * Turns a caught error into a message that is safe to show a user.
+ *
+ * Zod issues and `UserFacingError` messages are authored by us and safe to
+ * surface. Everything else - especially Prisma errors, which embed table,
+ * column and connection details - is logged server-side and replaced with a
+ * generic string.
  *
  * @param {unknown} error - The error object caught in a try/catch block.
- * @returns {string} A human-readable error message.
+ * @returns {string} A human-readable, non-leaking error message.
  */
 export function formatError(error: unknown): string {
-  // 1. Handle Zod Errors
+  if (error instanceof UserFacingError) {
+    return error.message;
+  }
+
   if (error instanceof ZodError) {
     const fieldErrors = error.issues.map((issue) => issue.message);
     return fieldErrors.length > 0
@@ -30,17 +41,16 @@ export function formatError(error: unknown): string {
       : "Validation failed";
   }
 
-  // 2. Handle Prisma Errors
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === "P2002") {
-      const meta = error.meta as { target?: string[] };
-      const field = meta?.target ? meta.target[0] : "Field";
-      return `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
-    }
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    const meta = error.meta as { target?: string[] } | undefined;
+    const field = meta?.target?.[0] ?? "Field";
+    return `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
   }
 
-  if (error instanceof Error) return error.message;
-
+  console.error("Unhandled error:", error);
   return "An unexpected error occurred";
 }
 
@@ -51,10 +61,14 @@ export function formatError(error: unknown): string {
  * @returns {string} The constructed prompt containing trip requirements and JSON schema enforcement instructions.
  */
 export function getAIPrompt({ trip }: { trip: Trip }) {
-  // We format the dates nicely for the AI
   const formattedDates = `${new Date(
     trip.startDate,
   ).toDateString()} to ${new Date(trip.endDate).toDateString()}`;
+
+  const budgetRange = getBudgetRange(trip);
+  const budgetLabel = budgetRange
+    ? formatBudgetRange(budgetRange)
+    : "Moderate/Standard";
 
   return `
 You are an expert local travel guide and budget planner.
@@ -67,14 +81,10 @@ TRIP DETAILS:
 - **Traveler Interests**: ${
     trip.interests?.join(", ") || "General sightseeing, Local culture"
   }
-- **Total Budget**: ${
-    trip.budget
-      ? `${trip.budget} (Currency of the destination)`
-      : "Moderate/Standard"
-  }
+- **Total Budget**: ${budgetLabel}
 
 CRITICAL INSTRUCTIONS:
-1. **Budget Enforcement**: The user has a budget of ${trip.budget}. 
+1. **Budget Enforcement**: The user has a budget of ${budgetLabel}.
    - If the budget is LOW: Suggest street food, free walking tours, public parks, and public transport. Avoid expensive tickets.
    - If the budget is HIGH: Suggest fine dining, private tours, and exclusive experiences.
    - **Important**: The activities suggested must NOT exceed this total budget when summed up.
@@ -84,15 +94,16 @@ CRITICAL INSTRUCTIONS:
   - Use "Free" when there is no cost.
   - Otherwise use a short string with amount and currency (e.g., "20 EUR").
   - Do not omit or leave "estimatedCost" empty.
+  - Use the SAME currency code for every activity in the itinerary.
 
-3. **Realism**: 
+3. **Realism**:
    - Group activities geographically to minimize travel time.
    - Include lunch and dinner stops in logical locations.
    - Use REAL, EXISTING places.
 
-4. **Response Format**: 
-   - You must output ONLY valid JSON. 
-    - Do not include markdown code blocks (like JSON fenced blocks). 
+4. **Response Format**:
+   - You must output ONLY valid JSON.
+    - Do not include markdown code blocks (like JSON fenced blocks).
    - Do not include introductory text.
 
 5. **Geolocation Accuracy**:
@@ -101,7 +112,7 @@ CRITICAL INSTRUCTIONS:
    }**.
    - Do NOT guess coordinates. If you are unsure, set them to '0'.
    - Double-check that latitude and longitude signs (+/-) are correct for this specific region.
-   
+
 6. **Location Validation**:
    - Check if the **Destination** ("${trip.destination}") is a real, recognizable city or region on Earth.
    - If the input is gibberish (e.g., "sdfdsf"), a random string, or a place that does not exist:
@@ -117,12 +128,12 @@ CRITICAL INSTRUCTIONS:
       "activities": [
         {
           "time": "HH:MM",
-          "title": "Exact name of the place", 
-          "placeName": "Exact name of the place", 
+          "title": "Exact name of the place",
+          "placeName": "Exact name of the place",
           "placeType": One of: [Sightseeing, Food, Relax, Adventure, Shopping, Culture]
           "description": "Max 10 words. Keywords only.",
-          "latitude": 0.0, (Must be exact latitude for this place) 
-          "longitude": 0.0, (Must be exact longitude for this place) 
+          "latitude": 0.0, (Must be exact latitude for this place)
+          "longitude": 0.0, (Must be exact longitude for this place)
           "estimatedCost": "Estimated cost (e.g. 'Free' or '20 EUR')",
         }
       ]
@@ -134,34 +145,32 @@ CRITICAL INSTRUCTIONS:
 
 /**
  * Fetches a representative landscape photo for a given destination using the Pexels API.
- * Attempts to retrieve a cached version using Next.js `fetch` configuration.
  *
  * @param {string} destination - The name of the city, country, or location to search for.
- * @returns {Promise<string|null|{success: false, message: string}>} The URL of the requested image, null if it is not found, or an error object indicating the photo fetch failed.
+ * @returns {Promise<string|null>} The image URL, or null when none is available or the request fails.
  */
-export async function getPhotoByDestination(destination: string) {
+export async function getPhotoByDestination(
+  destination: string,
+): Promise<string | null> {
+  const apiKey = process.env.PEXELS_API_KEY;
+  if (!apiKey) return null;
+
   try {
-    const url =
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(
-        destination,
-      )}&per_page=1&orientation=landscape&size=large` ||
-      "https://images.pexels.com/photos/268455/pexels-photo-268455.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
+    const url = `${PEXELS_SEARCH_URL}?query=${encodeURIComponent(
+      destination,
+    )}&per_page=1&orientation=landscape&size=large`;
 
     const response = await fetch(url, {
-      headers: {
-        Authorization: PEXELS_API_KEY || "",
-      },
+      headers: { Authorization: apiKey },
       next: { revalidate: 3600 },
     });
 
+    if (!response.ok) return null;
+
     const data = await response.json();
-
-    if (data.photos && data.photos.length > 0) {
-      return data.photos[0].src.large2x;
-    }
-
+    return data?.photos?.[0]?.src?.large2x ?? null;
+  } catch (error) {
+    console.error("Failed to fetch Pexels photo:", error);
     return null;
-  } catch {
-    return { success: false, message: "Failed to fetch photo" };
   }
 }

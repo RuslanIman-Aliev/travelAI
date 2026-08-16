@@ -70,12 +70,14 @@ const MapComponent = ({ activities }: { activities: Activity[] }) => {
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API as string,
+    // Browser-only key: it ships in the bundle, so it must be HTTP-referrer
+    // restricted and must not be the key used for server-side Places calls.
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "",
     version: "weekly",
   });
 
   const getActivityQuery = (activity: Activity) =>
-    activity.googleSearchQuery ?? activity.placeName ?? activity.title ?? "";
+    activity.placeName ?? activity.title ?? "";
 
   const defaultQuery = useMemo(() => {
     const firstNamed = activities.find(
@@ -246,8 +248,7 @@ const MapComponent = ({ activities }: { activities: Activity[] }) => {
               </p>
               <div className="flex items-center justify-between gap-3 text-xs text-slate-700">
                 <span>
-                  Estimated:{" "}
-                  {formatEstimatedCostLabel(selectedActivity.estimatedCost)}
+                  Estimated: {formatEstimatedCostLabel(selectedActivity)}
                 </span>
                 <button
                   className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
