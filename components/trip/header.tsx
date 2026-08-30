@@ -21,15 +21,15 @@ const TripHeader = ({
         src={trip.imageUrl ?? FALLBACK_TRIP_IMAGE}
         alt={`Trip to ${trip.destination}`}
         fill
-        sizes="100vw"
+        sizes="(min-width: 64rem) calc(100vw - 16rem), 100vw"
         className="object-cover object-center opacity-90"
         priority
       />
 
       <div className="absolute inset-0 bg-linear-to-b from-transparent dark:bg-[linear-gradient(to_right,#09090bCC,#232328cc)]" />
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 p-4 gap-8">
-        <h1 className="text-4xl md:text-6xl font-bold dark:text-white text-slate-900 drop-shadow-lg">
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 p-4 gap-4 sm:gap-8">
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold dark:text-white text-slate-900 drop-shadow-lg break-words max-w-full">
           Trip to <span className="text-cyan-400">{trip.destination}</span>
         </h1>
 

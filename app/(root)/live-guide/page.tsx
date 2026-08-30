@@ -7,7 +7,7 @@ const LiveGuidePage = async () => {
     return <div>Please log in to access the Live Guide feature.</div>; //remake later
   }
   return (
-    <div className="w-full h-full">
+    <div className="w-full p-4 sm:p-6 lg:p-0">
       <LiveGuideForm />
     </div>
   );

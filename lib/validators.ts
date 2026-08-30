@@ -142,8 +142,29 @@ export const aiDaySchema = z.object({
 
 // The model is untrusted input like any other client: bound the response so a
 // hallucinated itinerary cannot turn into thousands of rows.
+//
+// `title` and `currency` are no longer requested by the prompt (nothing persists
+// them) but stay optional here so an in-flight response still parses.
 export const aiTripResponseSchema = z.object({
   title: z.string().optional(),
   currency: z.string().optional(),
   itinerary: z.array(aiDaySchema).min(1).max(MAX_TRIP_DAYS),
 });
+
+/** The escape hatch the prompt defines for an unrecognisable destination. */
+export const aiErrorResponseSchema = z.object({
+  error: z.string().min(1),
+});
+
+/**
+ * What the model is allowed to return.
+ *
+ * This drives constrained decoding via `responseJsonSchema`, so the error variant
+ * has to be part of it: constraining output to the itinerary shape alone would
+ * make `{ "error": "Location not found" }` unrepresentable and silently break the
+ * invalid-destination path.
+ */
+export const aiGenerationResponseSchema = z.union([
+  aiErrorResponseSchema,
+  aiTripResponseSchema,
+]);

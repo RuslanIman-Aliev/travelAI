@@ -48,7 +48,7 @@ const TripItinerary = ({
             <span className="text-xs text-white/60">+ unknown</span>
           )}
         </div>
-        <div className="text-xs text-white/60">
+        <div className="hidden text-xs text-white/60 min-[1300px]:block">
           Drag cards to reorder when Manual is selected.
         </div>
       </div>
@@ -82,15 +82,15 @@ const TripItinerary = ({
               onDropActivity(activity.id);
             }}
             className={cn(
-              "flex w-full flex-row max-[1300px]:flex-col",
+              "flex w-full flex-col min-[1300px]:flex-row",
               isManualMode && "cursor-grab active:cursor-grabbing",
               isDragging && "opacity-60",
             )}
           >
-            <div className="flex w-[45%] justify-start max-[1300px]:w-full">
+            <div className="flex w-full min-w-0 justify-start min-[1300px]:w-[45%]">
               {isLeft && <ActivityCard activity={activity} />}
             </div>
-            <div className="flex w-[10%] justify-center items-center max-[1300px]:hidden">
+            <div className="hidden w-[10%] justify-center items-center min-[1300px]:flex">
               {isManualMode ? (
                 <div
                   className={cn(
@@ -114,7 +114,7 @@ const TripItinerary = ({
                 </div>
               )}
             </div>
-            <div className="flex w-[45%] justify-end max-[1300px]:w-full">
+            <div className="flex w-full min-w-0 justify-end min-[1300px]:w-[45%]">
               {!isLeft && <ActivityCard activity={activity} />}
             </div>
           </div>
