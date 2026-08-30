@@ -213,13 +213,13 @@ const TripJourneyView = ({
               <ArrowDownUp className="h-4 w-4 text-cyan-400" />
               <span>Route sorting</span>
             </div>
-            <p className="text-xs text-white/65">
+            <p className="text-sm lg:text-xs text-white/65">
               Sort the day automatically by time, route distance, or manual
               order.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <span className="text-sm lg:text-xs uppercase tracking-[0.2em] text-white/50">
               Sort
             </span>
             {sortModes.map((mode) => (
@@ -229,7 +229,7 @@ const TripJourneyView = ({
                 variant="outline"
                 onClick={() => handleSortModeChange(mode.value)}
                 className={cn(
-                  "border-white/10 bg-black/20 text-white hover:bg-black/35",
+                  "h-11 lg:h-9 border-white/10 bg-black/20 text-white hover:bg-black/35",
                   sortMode === mode.value && "border-cyan-400/60 text-cyan-100",
                 )}
                 disabled={isPending}
@@ -263,8 +263,8 @@ const TripJourneyView = ({
         </div>
       </div>
 
-      <div className="flex pt-2 pb-2 gap-5 max-[1050px]:flex-col">
-        <div className="w-[60%] max-[1300px]:w-[70%] max-[1050px]:w-full">
+      <div className="flex flex-col pt-2 pb-2 gap-5 min-[1050px]:flex-row">
+        <div className="w-full min-w-0 min-[1050px]:w-[70%] min-[1300px]:w-[60%]">
           <TripItinerary
             activities={visibleActivities}
             sortMode={sortMode}
@@ -279,8 +279,8 @@ const TripJourneyView = ({
             }
           />
         </div>
-        <div className="flex w-[40%] max-[1300px]:w-[30%] max-[1050px]:w-full">
-          <div className="sticky top-[45%] h-[50vh] w-full max-[1300px]:h-[30vh] max-[1050px]:h-[40vh]">
+        <div className="flex w-full min-w-0 min-[1050px]:w-[30%] min-[1300px]:w-[40%]">
+          <div className="h-[55dvh] w-full min-[1050px]:sticky min-[1050px]:top-[45%] min-[1050px]:h-[30dvh] min-[1300px]:h-[50dvh]">
             <div className="h-full w-full rounded-xl overflow-hidden">
               <MapComponent activities={visibleActivities} />
             </div>

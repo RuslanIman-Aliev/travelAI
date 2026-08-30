@@ -248,13 +248,13 @@ const LiveGuideForm = () => {
   const hasResults = availablePlaces.length > 0;
 
   return (
-    <div className="w-full h-full flex justify-center items-center">
+    <div className="w-full flex justify-center items-center">
       <Card className="w-full max-w-125 md:max-w-175 main-card pr-0! pl-0!">
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="flex flex-row gap-5 max-[500px]:flex-col">
-                <div className="flex flex-col w-[50%] max-[500px]:w-full">
+              <div className="flex flex-col gap-4 md:flex-row md:gap-5">
+                <div className="flex flex-col w-full md:w-[50%]">
                   <FormField
                     control={form.control}
                     name="location"
@@ -265,6 +265,7 @@ const LiveGuideForm = () => {
                         </FormLabel>
                         <FormControl>
                           <Input
+                            className="h-11 text-base md:text-base lg:h-9 lg:text-sm"
                             placeholder={
                               isLocating
                                 ? "Loading location..."
@@ -279,7 +280,7 @@ const LiveGuideForm = () => {
                   />
                 </div>
 
-                <div className="flex flex-col w-[20%] max-[500px]:w-full">
+                <div className="flex flex-col w-full md:w-[20%]">
                   <FormField
                     control={form.control}
                     name="radius"
@@ -294,11 +295,12 @@ const LiveGuideForm = () => {
                               <Button
                                 type="button"
                                 variant="outline"
-                                className={
+                                className={cn(
+                                  "h-11 w-full lg:h-9",
                                   radiusValue
                                     ? "text-foreground"
-                                    : "text-gray-500"
-                                }
+                                    : "text-gray-500",
+                                )}
                               >
                                 {radiusValue || "Select Radius"}
                               </Button>
@@ -329,13 +331,13 @@ const LiveGuideForm = () => {
                   />
                 </div>
 
-                <div className="flex flex-col justify-end max-[500px]:w-full">
+                <div className="flex flex-col justify-end w-full md:w-auto">
                   <div className="mb-2 hidden md:block">
                     <Label className="opacity-0">Spacer</Label>
                   </div>
                   <Button
                     variant="outline"
-                    className="text-gray-500 cursor-pointer"
+                    className="text-gray-500 cursor-pointer h-11 lg:h-9"
                     type="button"
                     onClick={handleUserLocation}
                     disabled={isLocating}
@@ -345,7 +347,7 @@ const LiveGuideForm = () => {
                 </div>
               </div>
 
-              <div className="flex justify-between text-sm mt-2 text-gray-500">
+              <div className="flex flex-wrap gap-x-4 justify-between text-sm mt-2 text-gray-500">
                 <div>Found {availablePlaces.length} places</div>
                 <div>
                   Selected {selectedCount}/{MAX_SELECTED_PLACES} places
@@ -416,7 +418,7 @@ const LiveGuideForm = () => {
                                     <span className="text-base font-semibold truncate pr-1 text-wrap">
                                       {place.name}
                                     </span>
-                                    <span className="text-xs text-muted-foreground truncate font-normal text-wrap">
+                                    <span className="text-sm lg:text-xs text-muted-foreground truncate font-normal text-wrap">
                                       {place.address.split(",")[0]}
                                       {place.distance != null &&
                                         ` • ${place.distance} km`}
@@ -479,7 +481,7 @@ const LiveGuideForm = () => {
                   variant={hasResults ? "outline" : "default"}
                   onClick={onSearchPlaces}
                   disabled={isSearching || isLocating}
-                  className="w-full cursor-pointer"
+                  className="w-full cursor-pointer h-11 lg:h-9"
                 >
                   {isSearching
                     ? "Searching..."
@@ -492,7 +494,7 @@ const LiveGuideForm = () => {
                   <Button
                     type="submit"
                     disabled={isSaving || selectedCount === 0}
-                    className="w-full cursor-pointer"
+                    className="w-full cursor-pointer h-11 lg:h-9"
                   >
                     {isSaving
                       ? "Saving..."

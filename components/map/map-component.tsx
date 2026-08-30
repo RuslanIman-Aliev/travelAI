@@ -262,9 +262,10 @@ const MapComponent = ({ activities }: { activities: Activity[] }) => {
           </InfoWindow>
         )}
       </GoogleMap>
-      <div className="absolute bottom-3 right-3 flex flex-wrap items-center gap-2">
+      <div className="absolute bottom-8 right-3 sm:bottom-3 flex flex-wrap items-center gap-2">
         <Button
           variant="outline"
+          className="h-11 lg:h-9"
           onClick={() => openGoogleMaps(defaultMapsUrl)}
         >
           Open Maps

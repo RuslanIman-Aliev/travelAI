@@ -1,20 +1,65 @@
 import { prisma } from "@/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NonRetriableError } from "inngest";
 import { parseCostString } from "../cost";
-import { getAIPrompt, getPhotoByDestination } from "../utils";
+import { toGeminiResponseSchema } from "../gemini-schema";
 import type { AIActivity, AIDay } from "../types";
-import { aiTripResponseSchema } from "../validators";
+import { getAIPrompt, getPhotoByDestination } from "../utils";
+import { aiGenerationResponseSchema } from "../validators";
 import { inngest } from "./client";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-const model = genAI.getGenerativeModel({
-  model: "gemini-3-flash-preview",
-  generationConfig: {
-    responseMimeType: "application/json",
-  },
-});
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-3-flash-preview";
+
+/**
+ * Gemini 3 models reason before answering, and that reasoning dominates latency
+ * for a task that is mostly structured recall. `LOW` is the default rather than
+ * `MINIMAL` because the prompt still asks for real coordinates and for activity
+ * costs that sum under a budget - the two things most likely to degrade without
+ * any reasoning. Tunable so the quality/latency trade can be measured, not guessed.
+ */
+const THINKING_LEVELS: Record<string, ThinkingLevel> = {
+  MINIMAL: ThinkingLevel.MINIMAL,
+  LOW: ThinkingLevel.LOW,
+  MEDIUM: ThinkingLevel.MEDIUM,
+  HIGH: ThinkingLevel.HIGH,
+};
+
+const resolveThinkingLevel = (): ThinkingLevel => {
+  const configured = process.env.GEMINI_THINKING_LEVEL?.toUpperCase();
+  if (!configured) return ThinkingLevel.LOW;
+
+  const level = THINKING_LEVELS[configured];
+  if (!level) {
+    console.warn(
+      `Unknown GEMINI_THINKING_LEVEL "${configured}", falling back to LOW`,
+    );
+    return ThinkingLevel.LOW;
+  }
+
+  return level;
+};
+
+const THINKING_LEVEL = resolveThinkingLevel();
+
+/**
+ * Built once: converting the Zod schema walks the whole tree, and it never
+ * changes between requests.
+ */
+const RESPONSE_JSON_SCHEMA = toGeminiResponseSchema(aiGenerationResponseSchema);
+
+/**
+ * Ceiling on generated tokens, scaled by trip length. Deliberately generous - it
+ * exists to stop a runaway generation from burning the whole step timeout, not to
+ * trim normal responses. Too tight a cap would truncate valid JSON and trigger a
+ * full retry, which is exactly the latency cliff this work is removing.
+ *
+ * @param {number} daysCount - Number of days in the trip.
+ * @returns {number} A token ceiling for this request.
+ */
+const maxOutputTokensFor = (daysCount: number) =>
+  Math.min(32_768, 2_048 + Math.max(daysCount, 1) * 2_048);
 
 /**
  * Converts various optional types to a strict number or null.
@@ -80,6 +125,9 @@ const toActivityCreateInput = (activity: AIActivity, index: number) => {
     order: index + 1,
     time: activity.time,
     title: activity.title?.trim() || activity.placeName?.trim() || "Activity",
+    // The prompt no longer asks for `placeName` - it used to instruct the model to
+    // repeat the place name into both fields, which was pure duplicated output.
+    // The fallback stays so a response from the older prompt still maps cleanly.
     placeName: activity.placeName?.trim() || activity.title?.trim(),
     description: activity.description,
     placeType: activity.placeType,
@@ -124,8 +172,43 @@ export const generateTripFunction = inngest.createFunction(
       };
       const prompt = getAIPrompt({ trip: tripWithDates });
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const startedAt = Date.now();
+      const response = await ai.models.generateContent({
+        model: MODEL,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          // Constrained decoding: the model can only emit a shape that parses,
+          // which removes the schema-mismatch retry - a full second generation.
+          responseJsonSchema: RESPONSE_JSON_SCHEMA,
+          thinkingConfig: { thinkingLevel: THINKING_LEVEL },
+          maxOutputTokens: maxOutputTokensFor(trip.daysCount),
+        },
+      });
+      const durationMs = Date.now() - startedAt;
+
+      const usage = response.usageMetadata;
+      // `thoughtsTokenCount` vs `candidatesTokenCount` is what attributes the wait
+      // to reasoning or to output, and therefore what justifies any further work.
+      console.info("[gemini] itinerary generated", {
+        tripId,
+        model: MODEL,
+        thinkingLevel: THINKING_LEVEL,
+        daysCount: trip.daysCount,
+        durationMs,
+        promptTokens: usage?.promptTokenCount,
+        thoughtsTokens: usage?.thoughtsTokenCount,
+        outputTokens: usage?.candidatesTokenCount,
+        totalTokens: usage?.totalTokenCount,
+      });
+
+      const text = response.text;
+      if (!text) {
+        const finishReason = response.candidates?.[0]?.finishReason;
+        throw new Error(
+          `AI returned no content (finishReason: ${finishReason ?? "unknown"})`,
+        );
+      }
 
       let json: unknown;
       try {
@@ -134,15 +217,7 @@ export const generateTripFunction = inngest.createFunction(
         throw new Error("AI response was not valid JSON");
       }
 
-      if (
-        json &&
-        typeof json === "object" &&
-        typeof (json as { error?: unknown }).error === "string"
-      ) {
-        return { error: (json as { error: string }).error };
-      }
-
-      const parsed = aiTripResponseSchema.safeParse(json);
+      const parsed = aiGenerationResponseSchema.safeParse(json);
       if (!parsed.success) {
         throw new Error("AI response did not match itinerary schema");
       }

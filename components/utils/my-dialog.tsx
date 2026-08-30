@@ -31,10 +31,10 @@ export function MyModal({
             Maps or move to your dashboard.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col md:flex-row md:justify-between">
+        <div className="flex flex-col gap-2 md:flex-row md:gap-0 md:justify-between">
           <Button
             variant="outline"
-            className="mt-4 cursor-pointer"
+            className="mt-4 cursor-pointer h-11 lg:h-9"
             onClick={() => {
               setOpen(false);
               router.push("/");
@@ -42,7 +42,11 @@ export function MyModal({
           >
             Go to Dashboard
           </Button>
-          <Button asChild variant="outline" className="mt-4 cursor-pointer">
+          <Button
+            asChild
+            variant="outline"
+            className="mt-4 cursor-pointer h-11 lg:h-9"
+          >
             <Link
               href={googleMapsUrl}
               target="_blank"

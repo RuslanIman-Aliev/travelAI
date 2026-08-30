@@ -117,24 +117,26 @@ CRITICAL INSTRUCTIONS:
    - Check if the **Destination** ("${trip.destination}") is a real, recognizable city or region on Earth.
    - If the input is gibberish (e.g., "sdfdsf"), a random string, or a place that does not exist:
      RETURN ONLY THIS JSON: { "error": "Location not found" }
+
+7. **Brevity**:
+   - Emit ONLY the fields shown below. Every extra token slows the response down.
+   - "summary": max 8 words.
+
 {
-  "title": "...",
-  "currency": "...",
   "itinerary": [
     {
       "dayNumber": 1,
       "date": "YYYY-MM-DD",
-      "summary": "...",
+      "summary": "Max 8 words.",
       "activities": [
         {
           "time": "HH:MM",
           "title": "Exact name of the place",
-          "placeName": "Exact name of the place",
           "placeType": One of: [Sightseeing, Food, Relax, Adventure, Shopping, Culture]
           "description": "Max 10 words. Keywords only.",
           "latitude": 0.0, (Must be exact latitude for this place)
           "longitude": 0.0, (Must be exact longitude for this place)
-          "estimatedCost": "Estimated cost (e.g. 'Free' or '20 EUR')",
+          "estimatedCost": "Estimated cost (e.g. 'Free' or '20 EUR')"
         }
       ]
     }

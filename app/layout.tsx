@@ -37,9 +37,9 @@ export default function RootLayout({
         >
           <SidebarProvider>
             <AppSidebar />
-            <main className="w-full min-h-screen">
-              <div className="p-4 border-b flex items-center gap-2 md:hidden">
-                <SidebarTrigger />
+            <main className="w-full min-w-0 min-h-dvh">
+              <div className="p-4 border-b flex items-center gap-2 lg:hidden">
+                <SidebarTrigger className="size-11" />
                 <span className="font-semibold">My Dashboard</span>
               </div>
               <div className="flex-1 h-full">{children}</div>

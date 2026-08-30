@@ -70,7 +70,7 @@ const Badges = ({
       {trip.interests.length > 0 && (
         <Badge
           variant="outline"
-          className={cn(chipClass, "max-[400px]:max-w-50")}
+          className={cn(chipClass, "max-w-50 min-[400px]:max-w-none")}
         >
           <MapPin className="w-4 h-4 mr-2 text-cyan-400" />
           <span className="truncate max-w-50 md:max-w-none">

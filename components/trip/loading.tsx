@@ -106,7 +106,11 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
         <p className="text-slate-500 max-w-xs">{error}</p>
 
         <div className="flex gap-3 mt-2">
-          <Button variant="outline" onClick={() => router.push("/new-trip")}>
+          <Button
+            variant="outline"
+            className="h-11 lg:h-9"
+            onClick={() => router.push("/new-trip")}
+          >
             Go Back
           </Button>
         </div>
@@ -115,7 +119,7 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
   }
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
+    <div className="relative min-h-dvh w-full overflow-hidden">
       <Image
         src="/image-for-loading-page.png"
         fill
@@ -130,7 +134,7 @@ const LoadingSpinner = ({ tripId }: { tripId: string }) => {
             <EmptyMedia>
               <Spinner className="size-10" />
             </EmptyMedia>
-            <EmptyTitle className="text-3xl">
+            <EmptyTitle className="text-2xl sm:text-3xl">
               Processing your request
             </EmptyTitle>
             <EmptyDescription className="text-md pt-3">

@@ -84,7 +84,7 @@ const CreateNewTripForm = () => {
           className="space-y-8 flex flex-col justify-center   h-full"
           onSubmit={form.handleSubmit(onSubmit, onError)}
         >
-          <h1 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[24px] text-left w-full">
+          <h1 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-xl sm:text-[24px] text-left w-full">
             Create Your New Journey
           </h1>
           <FormField
@@ -96,7 +96,11 @@ const CreateNewTripForm = () => {
                   Where do you want to go?
                 </FormLabel>
                 <FormControl>
-                  <Input placeholder="Destination" {...field} />
+                  <Input
+                    className="h-11 text-base md:text-base lg:h-9 lg:text-sm"
+                    placeholder="Destination"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -112,7 +116,11 @@ const CreateNewTripForm = () => {
                   Please enter the country you are visiting
                 </FormLabel>
                 <FormControl>
-                  <Input placeholder="Country" {...field} />
+                  <Input
+                    className="h-11 text-base md:text-base lg:h-9 lg:text-sm"
+                    placeholder="Country"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -126,14 +134,14 @@ const CreateNewTripForm = () => {
 
             <Popover>
               <PopoverTrigger asChild>
-                <div className="flex flex-col sm:flex-row items-center gap-4 cursor-pointer w-full pt-1">
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 cursor-pointer w-full pt-1">
                   {/*  (Start Date) */}
                   <div className="relative w-full">
                     <Button
                       type="button"
                       variant={"outline"}
                       className={cn(
-                        "w-full justify-start text-left font-normal border-slate-600 hover:border-cyan-400 transition-colors",
+                        "w-full h-11 lg:h-9 justify-start text-left font-normal border-slate-600 hover:border-cyan-400 transition-colors",
                         !startDate && "text-muted-foreground",
                       )}
                     >
@@ -157,7 +165,7 @@ const CreateNewTripForm = () => {
                       type="button"
                       variant={"outline"}
                       className={cn(
-                        "w-full justify-start text-left font-normal border-slate-600 hover:border-cyan-400 transition-colors",
+                        "w-full h-11 lg:h-9 justify-start text-left font-normal border-slate-600 hover:border-cyan-400 transition-colors",
                         !endDate && "text-muted-foreground",
                       )}
                     >
@@ -224,7 +232,7 @@ const CreateNewTripForm = () => {
                       <ToggleGroupItem
                         key={interest}
                         value={interest}
-                        className="rounded-full px-5 py-3 border-slate-600 text-slate-400 
+                        className="rounded-full px-5 py-3 min-h-11 lg:min-h-10 border-slate-600 text-slate-400 
                                       data-[state=on]:bg-cyan-500/20 
                                       data-[state=on]:border-cyan-400 
                                       data-[state=on]:text-cyan-400 
@@ -264,7 +272,7 @@ const CreateNewTripForm = () => {
                       defaultValue={BUDGET_RANGE}
                       value={field.value}
                       onValueChange={field.onChange}
-                      className="py-4"
+                      className="py-4 [&_[data-slot=slider-thumb]]:size-6 lg:[&_[data-slot=slider-thumb]]:size-4"
                     />
                   </div>
                 </FormControl>
@@ -274,10 +282,10 @@ const CreateNewTripForm = () => {
           />
 
           {/*BUTTONS SECTION*/}
-          <div className="main-card flex max-md:justify-center justify-end ">
+          <div className="main-card flex justify-center md:justify-end">
             <Button
               type="submit"
-              className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold min-w-25 max-sm:w-[90%] max-sm:text-wrap"
+              className="bg-cyan-400 text-black hover:bg-cyan-500 font-semibold w-[90%] h-auto min-h-11 py-2 whitespace-normal sm:w-auto lg:min-w-25 lg:min-h-9 sm:whitespace-nowrap"
               disabled={isPending}
             >
               {isPending ? "Generating a trip...." : "Generate trip"} to{" "}

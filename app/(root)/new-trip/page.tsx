@@ -7,7 +7,7 @@ const CreateNewTrip = async () => {
     return <div>Please log in to create a new trip.</div>; //remake later
   }
   return (
-    <div className="m-10">
+    <div className="m-4 sm:m-6 lg:m-10">
       <CreateNewTripForm />
     </div>
   );

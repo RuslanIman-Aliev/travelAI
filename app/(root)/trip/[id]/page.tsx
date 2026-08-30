@@ -30,13 +30,13 @@ const TripPage = async (props: {
   // and the loading spinner from rendering at the same time.
   if (trip.status === "failed") {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-6 p-4">
+      <div className="flex flex-col items-center justify-center min-h-dvh gap-6 p-4">
         <div className="bg-red-100 p-4 rounded-full">
           <MapPinOff className="w-12 h-12 text-red-500" />
         </div>
 
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-xl sm:text-2xl font-bold">
             We couldn&apos;t find {trip.destination}
           </h1>
           <p className="max-w-md">
@@ -89,10 +89,10 @@ const TripPage = async (props: {
         </Suspense>
       </div>
 
-      <div className="flex justify-center p-10">
+      <div className="flex justify-center p-4 md:p-10">
         <Button
           asChild
-          className="w-full md:w-auto md:min-w-50"
+          className="w-full h-11 lg:h-9 md:w-auto md:min-w-50"
           variant="outline"
         >
           <Link href="/">To all your trips</Link>

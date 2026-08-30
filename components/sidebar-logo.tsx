@@ -31,6 +31,7 @@ export function SidebarLogo() {
           src={logoSrc}
           alt="TravelGuide Logo"
           fill
+          sizes="64px"
           className="object-cover"
           priority
         />

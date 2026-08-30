@@ -2,10 +2,17 @@ import { prisma } from "@/prisma";
 
 const generateContentMock = jest.fn();
 
-jest.mock("@google/generative-ai", () => ({
-  GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
-    getGenerativeModel: () => ({ generateContent: generateContentMock }),
+jest.mock("@google/genai", () => ({
+  GoogleGenAI: jest.fn().mockImplementation(() => ({
+    models: { generateContent: generateContentMock },
   })),
+  ThinkingLevel: {
+    THINKING_LEVEL_UNSPECIFIED: "THINKING_LEVEL_UNSPECIFIED",
+    MINIMAL: "MINIMAL",
+    LOW: "LOW",
+    MEDIUM: "MEDIUM",
+    HIGH: "HIGH",
+  },
 }));
 
 // Capture the handler `createFunction` is given so it can be driven directly,
@@ -98,9 +105,16 @@ const validItinerary = {
   ],
 };
 
+/** `@google/genai` exposes `text` as a getter, not `response.text()`. */
 const respondWith = (payload: unknown) =>
   generateContentMock.mockResolvedValue({
-    response: { text: () => JSON.stringify(payload) },
+    text: JSON.stringify(payload),
+    usageMetadata: {
+      promptTokenCount: 900,
+      thoughtsTokenCount: 120,
+      candidatesTokenCount: 340,
+      totalTokenCount: 1360,
+    },
   });
 
 const run = () => handler({ event: { data: { tripId: "trip_1" } }, step });
@@ -108,6 +122,8 @@ const run = () => handler({ event: { data: { tripId: "trip_1" } }, step });
 describe("generateTripFunction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The generation step logs its token/latency breakdown on every run.
+    jest.spyOn(console, "info").mockImplementation(() => {});
     // Re-import so `createFunction` re-registers `handler` against the fresh mocks.
     jest.isolateModules(() => {
       jest.requireActual("@/lib/inngest/functions");
@@ -237,11 +253,50 @@ describe("generateTripFunction", () => {
   });
 
   it("rejects a response that is not valid JSON", async () => {
-    generateContentMock.mockResolvedValue({
-      response: { text: () => "here is your trip!" },
-    });
+    generateContentMock.mockResolvedValue({ text: "here is your trip!" });
 
     await expect(run()).rejects.toThrow("AI response was not valid JSON");
+  });
+
+  it("reports an empty response with its finish reason", async () => {
+    generateContentMock.mockResolvedValue({
+      text: undefined,
+      candidates: [{ finishReason: "MAX_TOKENS" }],
+    });
+
+    await expect(run()).rejects.toThrow(
+      "AI returned no content (finishReason: MAX_TOKENS)",
+    );
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  describe("request configuration", () => {
+    const configOf = () => generateContentMock.mock.calls[0][0].config;
+
+    it("caps thinking, constrains decoding and bounds the output", async () => {
+      respondWith(validItinerary);
+
+      await run();
+
+      const config = configOf();
+      expect(config.thinkingConfig).toEqual({ thinkingLevel: "LOW" });
+      expect(config.responseMimeType).toBe("application/json");
+      expect(config.maxOutputTokens).toBeGreaterThan(0);
+      // trip.daysCount is 2 -> 2048 + 2 * 2048
+      expect(config.maxOutputTokens).toBe(6_144);
+    });
+
+    it("sends a schema that permits both the itinerary and the error escape hatch", async () => {
+      respondWith(validItinerary);
+
+      await run();
+
+      const schema = configOf().responseJsonSchema;
+      expect(schema.anyOf).toHaveLength(2);
+      // Unsupported keywords would make Gemini reject the whole request.
+      expect(JSON.stringify(schema)).not.toContain("minLength");
+      expect(JSON.stringify(schema)).not.toContain("$schema");
+    });
   });
 
   it("still writes the itinerary when the destination photo is unavailable", async () => {

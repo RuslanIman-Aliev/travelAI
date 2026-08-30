@@ -19,7 +19,7 @@ Travel AI is a Next.js app that helps users plan trips with AI and build live ro
 - NextAuth v5
 - Inngest for background workflows
 - Google Maps and Places APIs
-- Gemini API (`@google/generative-ai`)
+- Gemini API (`@google/genai`)
 - Pexels API for destination images
 
 ## Prerequisites
@@ -38,6 +38,12 @@ Copy `.env.example` to `.env` and fill it in. Two notes worth calling out:
   `GOOGLE_PLACES_API_KEY` is used only from server code, must not carry the
   `NEXT_PUBLIC_` prefix, and should be IP-restricted. Using one public key for both
   lets anyone lift it from the bundle and bill your account.
+- **`GEMINI_THINKING_LEVEL` is the main latency knob.** Gemini 3 models reason
+  before answering, and that reasoning is usually the largest part of the wait.
+  The default is `LOW`; `MINIMAL` is faster but tends to cost coordinate accuracy
+  and budget adherence. Every generation logs `[gemini] itinerary generated` with
+  the duration and the split between `thoughtsTokens` and `outputTokens`, so the
+  trade can be measured rather than guessed.
 - **`ENABLE_TEST_AUTH` is development-only.** It enables a cookie-based sign-in
   shortcut for Playwright. `isTestAuthEnabled` in [`auth.ts`](auth.ts) additionally
   requires `NODE_ENV !== "production"`, so setting the variable in a production
@@ -150,6 +156,7 @@ server code. Component tests opt into jsdom with a `@jest-environment jsdom` doc
 Current automated tests cover:
 
 - Cost parsing/formatting and itinerary sorting (`lib/cost.test.ts`, `lib/itinerary.test.ts`)
+- The Gemini JSON Schema conversion (`lib/gemini-schema.test.ts`)
 - Zod schema validation (`lib/validators.test.ts`)
 - Error formatting and the Pexels client (`lib/utils.test.ts`)
 - Rate limiting and same-origin checks (`lib/security.test.ts`)
@@ -217,7 +224,12 @@ prisma/
    `/api/trips/[id]/generation`, which claims the trip with a conditional
    `updateMany` and sends a deduplicated `trip.generate` event.
 4. The Inngest function calls Gemini, validates the response with Zod, and writes the
-   days, activities and the `generated` status in one transaction.
+   days, activities and the `generated` status in one transaction. The request caps
+   the thinking budget, and constrains decoding to a JSON Schema derived from
+   `aiGenerationResponseSchema` — a union, so the model can still return
+   `{ "error": ... }` for an unrecognisable destination. `lib/gemini-schema.ts`
+   strips the JSON Schema keywords zod emits that Gemini does not accept
+   (`$schema`, `default`, `minLength`).
 5. The client polls `GET /api/trips/[id]/generation` and refreshes once the job
    reaches a terminal state.
 

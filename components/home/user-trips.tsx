@@ -41,30 +41,33 @@ const UserTrips = async ({
     <>
       <div className="grid grid-cols-1 lg:grid-cols-2 3xl:grid-cols-3 gap-4 w-full">
         {trips.map((trip) => (
-          <Card key={trip.id} className="p-0 pb-2 main-card max-[400px]:gap-2">
+          <Card
+            key={trip.id}
+            className="p-0 pb-2 main-card gap-2 min-[400px]:gap-6"
+          >
             <CardHeader className="p-0">
-              <CardTitle className="text-xl font-bold mb-2 max-[400px]:mb-0">
-                <div className="relative w-full h-80 rounded-lg overflow-hidden max-[500px]:h-60">
+              <CardTitle className="text-xl font-bold min-[400px]:mb-2">
+                <div className="relative w-full h-60 min-[500px]:h-80 rounded-lg overflow-hidden">
                   <Image
                     src={trip.imageUrl ?? FALLBACK_TRIP_IMAGE}
                     alt={`Trip to ${trip.destination}`}
                     fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    sizes="(min-width: 120rem) 33vw, (min-width: 64rem) calc((100vw - 16rem) / 2), 100vw"
                     className="object-cover"
                   />
                   <div className="absolute inset-0 bg-linear-to-b from-transparent dark:bg-[linear-gradient(to_right,#09090b66,#23232866)]" />
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-slate-400 text-[20px] max-[400px]:pt-0">
+            <CardContent className="text-slate-400 text-[20px] min-[400px]:pt-6">
               {[trip.destination, trip.country].filter(Boolean).join(", ")}
-              <div className="flex flex-wrap justify-center gap-3 pt-5 max-[400px]:gap-1 max-[400px]:justify-start max-[400px]:pt-2">
+              <div className="flex flex-wrap justify-start gap-1 pt-2 min-[400px]:justify-center min-[400px]:gap-3 min-[400px]:pt-5">
                 <Badges trip={trip} />
               </div>
             </CardContent>
 
             <CardFooter className="flex justify-end pr-2">
-              <Button asChild>
+              <Button asChild className="h-11 lg:h-9">
                 <Link href={`/trip/${trip.id}`}>
                   {isGenerated ? "View Trip Activity" : "Start trip generation"}
                 </Link>
@@ -78,6 +81,7 @@ const UserTrips = async ({
         <div className="flex justify-center gap-4 mt-6">
           <Button
             variant="outline"
+            className="h-11 lg:h-9"
             disabled={pagination.currentPage <= 1}
             asChild={pagination.currentPage > 1}
           >
@@ -94,6 +98,7 @@ const UserTrips = async ({
           </span>
           <Button
             variant="outline"
+            className="h-11 lg:h-9"
             disabled={pagination.currentPage >= pagination.totalPages}
             asChild={pagination.currentPage < pagination.totalPages}
           >

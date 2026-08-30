@@ -24,30 +24,30 @@ const DayChanger = ({ totalDays }: { totalDays: number }) => {
     });
   };
   return (
-    <div className="w-full flex justify-between p-5 items-center">
+    <div className="w-full flex justify-between p-3 sm:p-5 items-center">
       <Button
         variant="ghost"
-        className="cursor-pointer"
+        className="cursor-pointer min-h-11 min-w-11 lg:min-h-9 lg:min-w-9"
         onClick={() => handleNavigation(currentDay - 1)}
         disabled={currentDay <= 0 || isPending}
       >
         {isPending ? (
           <Spinner className="size-8" />
         ) : (
-          <ChevronLeft className="w-10! h-10!" />
+          <ChevronLeft className="w-8! h-8! lg:w-10! lg:h-10!" />
         )}
       </Button>
-      <div className="text-2xl">Day &mdash; {currentDay + 1}</div>
+      <div className="text-xl sm:text-2xl">Day &mdash; {currentDay + 1}</div>
       <Button
         variant="ghost"
-        className="cursor-pointer"
+        className="cursor-pointer min-h-11 min-w-11 lg:min-h-9 lg:min-w-9"
         onClick={() => handleNavigation(currentDay + 1)}
         disabled={currentDay >= totalDays - 1 || isPending}
       >
         {isPending ? (
           <Spinner className="size-8" />
         ) : (
-          <ChevronRight className="w-10! h-10!" />
+          <ChevronRight className="w-8! h-8! lg:w-10! lg:h-10!" />
         )}
       </Button>
     </div>
