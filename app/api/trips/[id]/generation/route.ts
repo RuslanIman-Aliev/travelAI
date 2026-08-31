@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
-import { inngest } from "@/lib/inngest/client";
 import { checkRateLimit, isSameOriginRequest } from "@/lib/security";
+import { startTripGeneration } from "@/lib/trip-generation";
 import { tripIdSchema } from "@/lib/validators";
 import { prisma } from "@/prisma";
 import { NextResponse } from "next/server";
@@ -52,7 +52,7 @@ async function resolveRequest(
  *
  * @param {Request} request - The incoming request.
  * @param {RouteContext} context - The route context carrying the trip id.
- * @returns {Promise<NextResponse>} `{ status, aiGenerated }` for the trip.
+ * @returns {Promise<NextResponse>} `{ status }` for the trip.
  */
 export async function GET(
   request: Request,
@@ -63,7 +63,7 @@ export async function GET(
 
   const trip = await prisma.trip.findFirst({
     where: { id: resolved.tripId, userId: resolved.userId },
-    select: { status: true, aiGenerated: true },
+    select: { status: true },
   });
 
   if (!trip) {
@@ -79,11 +79,8 @@ export async function GET(
 /**
  * Starts itinerary generation for a trip.
  *
- * The trip is claimed with a conditional `updateMany` rather than a read
- * followed by a write: two concurrent requests would both pass a check-then-act
- * guard and enqueue the job twice. Only the request whose update actually
- * matched a row gets to send the event, and the event carries a stable id so
- * Inngest deduplicates any retry on top of that.
+ * The claim, the enqueue and the rollback all live in `startTripGeneration`, so
+ * this route, trip creation and the retry action cannot drift apart.
  *
  * @param {Request} request - The incoming request.
  * @param {RouteContext} context - The route context carrying the trip id.
@@ -120,38 +117,31 @@ export async function POST(
     );
   }
 
-  const claimed = await prisma.trip.updateMany({
-    where: {
-      id: tripId,
-      userId,
-      aiGenerated: false,
-      status: { in: ["draft", "failed"] },
-    },
-    data: { status: "generating" },
-  });
+  const result = await startTripGeneration(tripId, userId);
 
-  if (claimed.count === 0) {
-    const exists = await prisma.trip.findFirst({
-      where: { id: tripId, userId },
-      select: { id: true },
-    });
-
-    return exists
-      ? NextResponse.json(
-          { success: false, message: "Trip generation already in progress" },
-          { status: 409 },
-        )
-      : NextResponse.json(
-          { success: false, message: "Trip not found" },
-          { status: 404 },
-        );
+  if (result.status === "not-found") {
+    return NextResponse.json(
+      { success: false, message: "Trip not found" },
+      { status: 404 },
+    );
   }
 
-  await inngest.send({
-    id: `trip-generate-${tripId}`,
-    name: "trip.generate",
-    data: { tripId },
-  });
+  if (result.status === "already-running") {
+    return NextResponse.json(
+      { success: false, message: "Trip generation already in progress" },
+      { status: 409 },
+    );
+  }
+
+  if (result.status === "enqueue-failed") {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Could not start trip generation. Please try again.",
+      },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json(
     { success: true, message: "Background job started" },

@@ -10,6 +10,7 @@ import {
   CirclePlay,
   LayoutDashboard,
   Moon,
+  Route,
   Sun,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -32,6 +33,11 @@ const mainItems = [
     title: "Live Guide",
     url: "/live-guide",
     icon: AudioWaveform,
+  },
+  {
+    title: "Saved routes",
+    url: "/live-guide/history",
+    icon: Route,
   },
 ];
 

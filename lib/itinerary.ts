@@ -2,12 +2,6 @@ import { Activity } from "@prisma/client";
 
 export type ActivitySortMode = "auto" | "time" | "distance" | "manual";
 
-export type ActivityFilters = {
-  sortMode: ActivitySortMode;
-  enabledPlaceTypes: string[];
-  manualOrder?: string[];
-};
-
 const timePattern = /^(?:([01]?\d|2[0-3]):([0-5]\d))$/;
 
 /**
@@ -144,29 +138,6 @@ const sortByRouteDistance = (activities: Activity[]) => {
 };
 
 /**
- * Filters a list of activities based on allowed place categories.
- *
- * @param {Activity[]} activities - The original list of activities.
- * @param {string[]} enabledPlaceTypes - A list of lowercase place type keys to retain.
- * @returns {Activity[]} An array restricted to activities whose place type is enabled.
- */
-export const filterActivitiesByPlaceType = (
-  activities: Activity[],
-  enabledPlaceTypes: string[],
-) => {
-  if (enabledPlaceTypes.length === 0) return activities;
-  const normalized = new Set(
-    enabledPlaceTypes.map((type) => type.toLowerCase()),
-  );
-
-  return activities.filter((activity) => {
-    const placeType = activity.placeType?.toLowerCase().trim();
-    if (!placeType) return normalized.has("activity");
-    return normalized.has(placeType);
-  });
-};
-
-/**
  * Chooses an appropriate sorting method and applies it to the array of activities.
  *
  * @param {Activity[]} activities - The activities to sort.
@@ -209,6 +180,58 @@ export const sortActivities = (
 };
 
 /**
+ * Whether this day has ever been arranged by hand.
+ *
+ * @param {Activity[]} activities - The day's activities.
+ * @returns {boolean} True when at least one activity carries a saved position.
+ */
+export const hasUserOrder = (activities: Activity[]) =>
+  activities.some((activity) => activity.userOrder != null);
+
+/**
+ * Orders a day the way the user arranged it, falling back to the generated
+ * order for a day nobody has touched.
+ *
+ * `userOrder` is written for every activity in the day at once, so the two
+ * fields are never mixed within a single day - the fallback applies to the whole
+ * day or to none of it.
+ *
+ * @param {Activity[]} activities - The day's activities.
+ * @returns {Activity[]} A new array in the saved order.
+ */
+export const sortByUserOrder = (activities: Activity[]) =>
+  [...activities].sort(
+    (a, b) => (a.userOrder ?? a.order) - (b.userOrder ?? b.order),
+  );
+
+/**
+ * Moves one activity up or down by a single position.
+ *
+ * The touch fallback for drag-and-drop: HTML5 DnD does not fire on touch
+ * devices at all, so on a phone the Manual mode could be selected and then did
+ * nothing.
+ *
+ * @param {string[]} order - The current order of activity ids.
+ * @param {string} activityId - The activity to move.
+ * @param {-1|1} direction - Up (-1) or down (1).
+ * @returns {string[]} The new order, unchanged at the ends.
+ */
+export const moveInOrder = (
+  order: string[],
+  activityId: string,
+  direction: -1 | 1,
+) => {
+  const index = order.indexOf(activityId);
+  const target = index + direction;
+
+  if (index === -1 || target < 0 || target >= order.length) return order;
+
+  const next = [...order];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+};
+
+/**
  * Reorders activities to match a predetermined sequence established entirely by an array of IDs.
  *
  * @param {Activity[]} activities - The current activities.
@@ -240,29 +263,6 @@ export const sortActivitiesByManualOrder = (
   });
 
   return ordered;
-};
-
-/**
- * Consolidates filtering and sorting algorithms based on an aggregate filters object.
- *
- * @param {Activity[]} activities - The original, raw array of activities.
- * @param {ActivityFilters} filters - Options containing conditions and sort algorithms to apply.
- * @returns {Activity[]} The newly formed array post-filtered and properly sorted.
- */
-export const filterAndSortActivities = (
-  activities: Activity[],
-  filters: ActivityFilters,
-) => {
-  const filtered = filterActivitiesByPlaceType(
-    activities,
-    filters.enabledPlaceTypes,
-  );
-
-  if (filters.sortMode === "manual") {
-    return sortActivitiesByManualOrder(filtered, filters.manualOrder);
-  }
-
-  return sortActivities(filtered, filters.sortMode);
 };
 
 export const reorderManualOrder = (

@@ -29,8 +29,19 @@ const TripHeader = ({
       <div className="absolute inset-0 bg-linear-to-b from-transparent dark:bg-[linear-gradient(to_right,#09090bCC,#232328cc)]" />
 
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 p-4 gap-4 sm:gap-8">
-        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold dark:text-white text-slate-900 drop-shadow-lg break-words max-w-full">
-          Trip to <span className="text-cyan-400">{trip.destination}</span>
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-foreground drop-shadow-lg break-words max-w-full">
+          {trip.title ? (
+            <span className="text-cyan-500 dark:text-cyan-400">
+              {trip.title}
+            </span>
+          ) : (
+            <>
+              Trip to{" "}
+              <span className="text-cyan-500 dark:text-cyan-400">
+                {trip.destination}
+              </span>
+            </>
+          )}
         </h1>
 
         <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">

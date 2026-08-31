@@ -2,8 +2,9 @@ import {
   formatBudgetRange,
   formatCostSummary,
   formatEstimatedCostLabel,
+  budgetComparisonNote,
+  compareToBudget,
   getBudgetRange,
-  isOverBudget,
   parseCostString,
   summarizeCosts,
   type ActivityCost,
@@ -174,7 +175,7 @@ describe("budget helpers", () => {
   });
 });
 
-describe("isOverBudget", () => {
+describe("compareToBudget", () => {
   const budget = { min: 0, max: 100, currency: "USD" };
 
   it("flags a same-currency total above the maximum", () => {
@@ -182,36 +183,58 @@ describe("isOverBudget", () => {
       cost({ estimatedCostCents: 15_000, estimatedCostCurrency: "USD" }),
     ]);
 
-    expect(isOverBudget(summary, budget)).toBe(true);
+    expect(compareToBudget(summary, budget)).toBe("over");
+    expect(budgetComparisonNote(summary, budget)).toBeNull();
   });
 
-  it("does not flag a total within budget", () => {
+  it("reports a total within budget", () => {
     const summary = summarizeCosts([
       cost({ estimatedCostCents: 5_000, estimatedCostCurrency: "USD" }),
     ]);
 
-    expect(isOverBudget(summary, budget)).toBe(false);
+    expect(compareToBudget(summary, budget)).toBe("under");
+    expect(budgetComparisonNote(summary, budget)).toBeNull();
   });
 
-  it("refuses to compare across currencies", () => {
+  // The regression this guards: the old boolean returned `false` here, and the
+  // page rendered `false` as a calm "within budget" - on the one trip where the
+  // costs are four times the budget and nobody is told.
+  it("says a cross-currency comparison is unknown rather than fine", () => {
     const summary = summarizeCosts([
-      cost({ estimatedCostCents: 15_000, estimatedCostCurrency: "JPY" }),
+      cost({ estimatedCostCents: 40_000, estimatedCostCurrency: "JPY" }),
     ]);
 
-    expect(isOverBudget(summary, budget)).toBe(false);
+    expect(compareToBudget(summary, budget)).toBe("unknown");
+    expect(budgetComparisonNote(summary, budget)).toBe(
+      "Budget is in USD, activities are priced in JPY - not comparable",
+    );
   });
 
-  it("is false when there is no budget or no costs", () => {
-    const summary = summarizeCosts([cost()]);
+  it("says mixed activity currencies are unknown", () => {
+    const summary = summarizeCosts([
+      cost({ estimatedCostCents: 5_000, estimatedCostCurrency: "USD" }),
+      cost({ estimatedCostCents: 5_000, estimatedCostCurrency: "EUR" }),
+    ]);
 
-    expect(isOverBudget(summary, budget)).toBe(false);
+    expect(compareToBudget(summary, budget)).toBe("unknown");
+    expect(budgetComparisonNote(summary, budget)).toMatch(/several currencies/);
+  });
+
+  it("is unknown when there is no budget or no costs", () => {
+    expect(compareToBudget(summarizeCosts([cost()]), budget)).toBe("unknown");
     expect(
-      isOverBudget(
+      compareToBudget(
         summarizeCosts([
           cost({ estimatedCostCents: 999_999, estimatedCostCurrency: "USD" }),
         ]),
         null,
       ),
-    ).toBe(false);
+    ).toBe("unknown");
+  });
+
+  it("compares when only one side names a currency", () => {
+    const summary = summarizeCosts([cost({ estimatedCostCents: 15_000 })]);
+
+    expect(compareToBudget(summary, budget)).toBe("over");
   });
 });

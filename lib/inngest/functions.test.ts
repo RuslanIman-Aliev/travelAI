@@ -1,4 +1,6 @@
+import { MAX_TRIP_DAYS } from "@/lib/validators";
 import { prisma } from "@/prisma";
+import { NonRetriableError } from "inngest";
 
 const generateContentMock = jest.fn();
 
@@ -13,24 +15,39 @@ jest.mock("@google/genai", () => ({
     MEDIUM: "MEDIUM",
     HIGH: "HIGH",
   },
+  FinishReason: {
+    STOP: "STOP",
+    MAX_TOKENS: "MAX_TOKENS",
+    SAFETY: "SAFETY",
+  },
 }));
 
 // Capture the handler `createFunction` is given so it can be driven directly,
-// with `step.run` collapsed to "just call the body".
+// with `step.run` collapsed to "just call the body". The config is captured too:
+// `onFailure` is the terminal state for a run that ran out of retries, and it is
+// only reachable through there.
 let handler: (args: {
   event: { data: { tripId: string } };
   step: { run: (name: string, fn: () => unknown) => unknown };
 }) => Promise<unknown>;
 
+type FailureArgs = {
+  event: { data: { run_id?: string; event?: { data?: { tripId?: string } } } };
+  error: Error;
+};
+
+let config: { onFailure?: (args: FailureArgs) => Promise<unknown> };
+
 jest.mock("@/lib/inngest/client", () => ({
   inngest: {
     createFunction: (
-      _config: unknown,
+      fnConfig: { onFailure?: (args: FailureArgs) => Promise<unknown> },
       fn: (args: {
         event: { data: { tripId: string } };
         step: { run: (name: string, body: () => unknown) => unknown };
       }) => Promise<unknown>,
     ) => {
+      config = fnConfig;
       handler = fn;
       return { id: "generate-trip-itinerary" };
     },
@@ -39,7 +56,7 @@ jest.mock("@/lib/inngest/client", () => ({
 
 jest.mock("@/prisma", () => ({
   prisma: {
-    trip: { findUnique: jest.fn(), update: jest.fn() },
+    trip: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     day: { create: jest.fn() },
     $transaction: jest.fn(),
   },
@@ -55,7 +72,7 @@ jest.mock("@/lib/utils", () => {
 });
 
 const prismaMock = prisma as unknown as {
-  trip: { findUnique: jest.Mock; update: jest.Mock };
+  trip: { findUnique: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
   day: { create: jest.Mock };
   $transaction: jest.Mock;
 };
@@ -76,7 +93,6 @@ const trip = {
   budgetCurrency: "USD",
   interests: ["Food"],
   status: "generating",
-  aiGenerated: false,
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
 };
@@ -147,7 +163,6 @@ describe("generateTripFunction", () => {
     expect(prismaMock.trip.update).toHaveBeenCalledWith({
       where: { id: "trip_1" },
       data: {
-        aiGenerated: true,
         status: "generated",
         imageUrl: "https://img.test/paris.jpg",
       },
@@ -225,7 +240,7 @@ describe("generateTripFunction", () => {
 
     expect(prismaMock.trip.update).toHaveBeenCalledWith({
       where: { id: "trip_1" },
-      data: { status: "failed", aiGenerated: false },
+      data: { status: "failed" },
     });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
@@ -261,12 +276,32 @@ describe("generateTripFunction", () => {
   it("reports an empty response with its finish reason", async () => {
     generateContentMock.mockResolvedValue({
       text: undefined,
-      candidates: [{ finishReason: "MAX_TOKENS" }],
+      candidates: [{ finishReason: "SAFETY" }],
     });
 
     await expect(run()).rejects.toThrow(
-      "AI returned no content (finishReason: MAX_TOKENS)",
+      "AI returned no content (finishReason: SAFETY)",
     );
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("does not retry a response truncated by the output ceiling", async () => {
+    // Truncation is deterministic: the same prompt produces the same length, so
+    // the remaining retries would each spend a full generation to fail here
+    // again. It has to be non-retriable, and the message has to name the limit.
+    generateContentMock.mockResolvedValue({
+      text: '{"itinerary":[{"dayNumb',
+      candidates: [{ finishReason: "MAX_TOKENS" }],
+    });
+
+    // Asserted by name rather than by `instanceof`: the handler is re-imported
+    // through `isolateModules`, so it throws a different copy of the class than
+    // this file holds. The name is also what Inngest itself reads off a
+    // serialised error to decide whether to retry.
+    await expect(run()).rejects.toMatchObject({
+      name: NonRetriableError.name,
+      message: expect.stringContaining("output-token ceiling for a 2-day trip"),
+    });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
@@ -281,9 +316,25 @@ describe("generateTripFunction", () => {
       const config = configOf();
       expect(config.thinkingConfig).toEqual({ thinkingLevel: "LOW" });
       expect(config.responseMimeType).toBe("application/json");
-      expect(config.maxOutputTokens).toBeGreaterThan(0);
-      // trip.daysCount is 2 -> 2048 + 2 * 2048
-      expect(config.maxOutputTokens).toBe(6_144);
+      // Derived from the response schema's own bounds: envelope + days *
+      // (day envelope + MAX_ACTIVITIES_PER_DAY * per-activity). For the 2-day
+      // fixture that is 256 + 2 * (64 + 20 * 120).
+      expect(config.maxOutputTokens).toBe(5_184);
+    });
+
+    it("keeps the ceiling above what the schema permits for the longest trip", async () => {
+      // The regression this guards: the old ceiling was a flat 32_768, which is
+      // less than a 30-day itinerary can legally contain, so our own cap
+      // truncated a valid response and burned every retry.
+      prismaMock.trip.findUnique.mockResolvedValue({
+        ...trip,
+        daysCount: MAX_TRIP_DAYS,
+      });
+      respondWith(validItinerary);
+
+      await run();
+
+      expect(configOf().maxOutputTokens).toBeGreaterThan(32_768);
     });
 
     it("sends a schema that permits both the itinerary and the error escape hatch", async () => {
@@ -317,5 +368,44 @@ describe("generateTripFunction", () => {
 
     await expect(run()).rejects.toThrow("Trip not found: trip_1");
     expect(generateContentMock).not.toHaveBeenCalled();
+  });
+
+  // Without this the only failure that ever wrote a terminal status was the
+  // "unknown destination" branch. Everything else - timeout, MAX_TOKENS, bad
+  // JSON, schema mismatch - left the trip in `generating` with no way out.
+  describe("onFailure", () => {
+    const fail = (
+      data: { run_id?: string; event?: { data?: { tripId?: string } } },
+      error = new Error("AI response was not valid JSON"),
+    ) => config.onFailure?.({ event: { data }, error });
+
+    beforeEach(() => {
+      jest.spyOn(console, "error").mockImplementation(() => {});
+      prismaMock.trip.updateMany.mockResolvedValue({ count: 1 });
+    });
+
+    it("settles a trip that ran out of retries into `failed`", async () => {
+      await fail({ run_id: "run_1", event: { data: { tripId: "trip_1" } } });
+
+      expect(prismaMock.trip.updateMany).toHaveBeenCalledWith({
+        where: { id: "trip_1", status: "generating" },
+        data: { status: "failed" },
+      });
+    });
+
+    it("only settles a trip that is still generating", async () => {
+      await fail({ run_id: "run_1", event: { data: { tripId: "trip_1" } } });
+
+      // A run that already reached `generated` must not be dragged back, so the
+      // status is part of the predicate rather than a bare id update.
+      const where = prismaMock.trip.updateMany.mock.calls[0][0].where;
+      expect(where.status).toBe("generating");
+    });
+
+    it("does nothing when the failure event carries no trip id", async () => {
+      await fail({ run_id: "run_1", event: { data: {} } });
+
+      expect(prismaMock.trip.updateMany).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1,9 +1,11 @@
 import { Activity } from "@prisma/client";
 import {
   buildRoutePath,
-  filterActivitiesByPlaceType,
+  hasUserOrder,
+  moveInOrder,
   reorderManualOrder,
   sortActivities,
+  sortByUserOrder,
 } from "@/lib/itinerary";
 
 const makeActivity = (overrides: Partial<Activity> = {}): Activity => ({
@@ -20,23 +22,11 @@ const makeActivity = (overrides: Partial<Activity> = {}): Activity => ({
   estimatedCostCurrency: null,
   estimatedCostIsFree: false,
   order: 1,
+  userOrder: null,
   ...overrides,
 });
 
 describe("itinerary helpers", () => {
-  it("filters activities by place type", () => {
-    const activities = [
-      makeActivity({ id: "1", placeType: "Food" }),
-      makeActivity({ id: "2", placeType: "Culture" }),
-      makeActivity({ id: "3", placeType: null }),
-    ];
-
-    const filtered = filterActivitiesByPlaceType(activities, ["food"]);
-
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0].id).toBe("1");
-  });
-
   it("sorts by time when times are available", () => {
     const activities = [
       makeActivity({ id: "1", time: "14:00", order: 2 }),
@@ -83,5 +73,69 @@ describe("itinerary helpers", () => {
     expect(
       sortActivities(activities, "manual").map((activity) => activity.id),
     ).toEqual(["1", "2", "3"]);
+  });
+
+  // The manual arrangement lives in the database now, not the query string.
+  describe("saved order", () => {
+    it("falls back to the generated order for a day nobody has touched", () => {
+      const activities = [
+        makeActivity({ id: "b", order: 2 }),
+        makeActivity({ id: "a", order: 1 }),
+      ];
+
+      expect(sortByUserOrder(activities).map((a) => a.id)).toEqual(["a", "b"]);
+      expect(hasUserOrder(activities)).toBe(false);
+    });
+
+    it("prefers the saved order once the day has been arranged", () => {
+      const activities = [
+        makeActivity({ id: "a", order: 1, userOrder: 3 }),
+        makeActivity({ id: "b", order: 2, userOrder: 1 }),
+        makeActivity({ id: "c", order: 3, userOrder: 2 }),
+      ];
+
+      expect(sortByUserOrder(activities).map((a) => a.id)).toEqual([
+        "b",
+        "c",
+        "a",
+      ]);
+      expect(hasUserOrder(activities)).toBe(true);
+    });
+
+    it("does not mutate the array it is given", () => {
+      const activities = [
+        makeActivity({ id: "a", order: 2 }),
+        makeActivity({ id: "b", order: 1 }),
+      ];
+
+      sortByUserOrder(activities);
+
+      expect(activities.map((a) => a.id)).toEqual(["a", "b"]);
+    });
+  });
+
+  // The touch fallback: HTML5 drag-and-drop never fires on a phone, so Manual
+  // mode could be selected there and then did nothing.
+  describe("moveInOrder", () => {
+    const order = ["a", "b", "c"];
+
+    it("swaps an activity with the one above it", () => {
+      expect(moveInOrder(order, "c", -1)).toEqual(["a", "c", "b"]);
+    });
+
+    it("swaps an activity with the one below it", () => {
+      expect(moveInOrder(order, "a", 1)).toEqual(["b", "a", "c"]);
+    });
+
+    it.each([
+      ["the first item up", "a", -1 as const],
+      ["the last item down", "c", 1 as const],
+      ["an activity that is not in the day", "zzz", 1 as const],
+    ])(
+      "returns the order unchanged when moving %s",
+      (_label, id, direction) => {
+        expect(moveInOrder(order, id, direction)).toBe(order);
+      },
+    );
   });
 });

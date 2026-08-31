@@ -4,10 +4,11 @@ import { insertTripSchema } from "@/lib/validators";
 import { BUDGET_RANGE, INTERESTS_LIST } from "@/lib/variables";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import z from "zod";
 
 import { insertTrip } from "@/lib/actions/trip.actions";
+import { localDayToUtcDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { ArrowRightLeft, CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,16 @@ import {
   ToggleGroupItem,
 } from "../../../components/ui/toggle-group";
 
+/** What each field is called on screen, so an error can name it. */
+const FIELD_LABELS = {
+  destination: "Destination",
+  country: "Country",
+  startDate: "Start date",
+  endDate: "End date",
+  interests: "Interests",
+  budget: "Budget",
+} as const;
+
 /** Midnight today, so the current day stays selectable in the date picker. */
 const startOfToday = () => {
   const now = new Date();
@@ -58,14 +69,47 @@ const CreateNewTripForm = () => {
   const endDate = useWatch({ control: form.control, name: "endDate" });
   const destination = useWatch({ control: form.control, name: "destination" });
 
-  const onError = () => {
-    toast.error("Please fill in all required fields correctly.");
+  /**
+   * Names the fields that failed rather than saying "some field did".
+   *
+   * The form has six inputs and the old message pointed at none of them, so
+   * finding the problem meant reading the whole form. `handleSubmit` already
+   * focuses the first invalid field; this says what to look for once there.
+   */
+  const onError = (errors: FieldErrors<z.infer<typeof insertTripSchema>>) => {
+    const invalid = (
+      Object.keys(errors) as Array<keyof typeof FIELD_LABELS>
+    ).filter((field) => field in FIELD_LABELS);
+
+    if (invalid.length === 0) {
+      toast.error("Please fill in all required fields correctly.");
+      return;
+    }
+
+    // The first field's own message is the specific one - "End date must be on
+    // or after the start date" beats repeating the field name back.
+    const firstMessage = errors[invalid[0]]?.message;
+
+    toast.error(
+      invalid.length === 1
+        ? `${FIELD_LABELS[invalid[0]]}: ${firstMessage ?? "check this field"}`
+        : `Check these fields: ${invalid
+            .map((field) => FIELD_LABELS[field])
+            .join(", ")}`,
+    );
   };
 
   const [isPending, startTransition] = useTransition();
   const onSubmit = (data: z.infer<typeof insertTripSchema>) => {
     startTransition(async () => {
-      const res = await insertTrip(data);
+      // The picker works in local time and the browser is the only place that
+      // knows which calendar day the user actually clicked, so the conversion to
+      // a date-only value has to happen here rather than in the action.
+      const res = await insertTrip({
+        ...data,
+        startDate: localDayToUtcDate(data.startDate),
+        endDate: localDayToUtcDate(data.endDate),
+      });
 
       if (!res.success) {
         toast.error(res.message);
@@ -155,7 +199,7 @@ const CreateNewTripForm = () => {
                   </div>
 
                   {/* Arrow */}
-                  <div className="text-slate-400">
+                  <div className="text-muted-foreground">
                     <ArrowRightLeft size={20} />
                   </div>
 
@@ -232,11 +276,13 @@ const CreateNewTripForm = () => {
                       <ToggleGroupItem
                         key={interest}
                         value={interest}
-                        className="rounded-full px-5 py-3 min-h-11 lg:min-h-10 border-slate-600 text-slate-400 
-                                      data-[state=on]:bg-cyan-500/20 
-                                      data-[state=on]:border-cyan-400 
-                                      data-[state=on]:text-cyan-400 
-                                      hover:bg-slate-800 hover:text-white cursor-pointer"
+                        className="rounded-full px-5 py-3 min-h-11 lg:min-h-10 border-border text-muted-foreground
+                                      data-[state=on]:bg-cyan-500/20
+                                      data-[state=on]:border-cyan-500
+                                      data-[state=on]:text-cyan-700
+                                      dark:data-[state=on]:border-cyan-400
+                                      dark:data-[state=on]:text-cyan-400
+                                      hover:bg-accent hover:text-accent-foreground cursor-pointer"
                       >
                         {interest}
                       </ToggleGroupItem>

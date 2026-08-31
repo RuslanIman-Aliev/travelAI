@@ -80,10 +80,15 @@ model Trip {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  /// User-chosen name for the trip. Falls back to `destination` when unset, so
+  /// existing trips keep reading exactly as they did.
+  title       String?
   destination String
   country     String?
-  startDate   DateTime
-  endDate     DateTime
+  /// Calendar days, not instants. Stored as `date` so a trip cannot drift to the
+  /// previous day when it is read back in a different timezone.
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
   daysCount   Int
   imageUrl    String?
 
@@ -95,16 +100,22 @@ model Trip {
 
   interests   String[]
 
+  /// The one record of where a trip is. An `aiGenerated` boolean used to sit
+  /// beside this saying `status == "generated"` a second time, which meant the
+  /// claim condition, the trip page and the dashboard filter all had to keep two
+  /// columns agreeing to stay correct.
   status      TripStatus @default(draft)
-  aiGenerated Boolean    @default(false)
 
   tripDays    Day[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([userId])
-  @@index([userId, aiGenerated])
+  // Both indexes end in `createdAt` because every listing query orders by it.
+  // Indexing only the filter columns left Postgres sorting the matched rows on
+  // every page of the dashboard.
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, status, createdAt(sort: Desc)])
 }
 
 model Day {
@@ -113,7 +124,7 @@ model Day {
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   
   dayNumber Int
-  date      DateTime?
+  date      DateTime? @db.Date
   summary   String?
 
   activities Activity[]
@@ -145,6 +156,10 @@ model Activity {
   estimatedCostIsFree   Boolean @default(false)
 
   order             Int
+  /// The order the user arranged this day into, when they have. Kept separate
+  /// from `order` so a regenerated itinerary does not silently inherit a manual
+  /// arrangement of activities that no longer exist.
+  userOrder         Int?
 
   @@index([dayId])
 }

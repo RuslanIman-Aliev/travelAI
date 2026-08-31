@@ -1,11 +1,14 @@
 import { prisma } from "@/prisma";
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { FinishReason, GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NonRetriableError } from "inngest";
 import { parseCostString } from "../cost";
 import { toGeminiResponseSchema } from "../gemini-schema";
 import type { AIActivity, AIDay } from "../types";
 import { getAIPrompt, getPhotoByDestination } from "../utils";
-import { aiGenerationResponseSchema } from "../validators";
+import {
+  MAX_ACTIVITIES_PER_DAY,
+  aiGenerationResponseSchema,
+} from "../validators";
 import { inngest } from "./client";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
@@ -50,16 +53,47 @@ const THINKING_LEVEL = resolveThinkingLevel();
 const RESPONSE_JSON_SCHEMA = toGeminiResponseSchema(aiGenerationResponseSchema);
 
 /**
- * Ceiling on generated tokens, scaled by trip length. Deliberately generous - it
- * exists to stop a runaway generation from burning the whole step timeout, not to
- * trim normal responses. Too tight a cap would truncate valid JSON and trigger a
- * full retry, which is exactly the latency cliff this work is removing.
+ * Token cost of the pieces of a response, used to size the output ceiling from
+ * what the schema actually permits rather than from a round number.
+ *
+ * `TOKENS_PER_ACTIVITY` is deliberately about double a typical activity object:
+ * the prompt caps `description` at ten words and `title` at a place name, so a
+ * real one lands nearer 60 tokens. The headroom is the point - undershooting
+ * truncates JSON mid-object, which costs a whole regeneration.
+ */
+const TOKENS_PER_ACTIVITY = 120;
+const TOKENS_PER_DAY_ENVELOPE = 64;
+const RESPONSE_ENVELOPE_TOKENS = 256;
+
+/**
+ * The most the model will emit in one response. Configurable because it is a
+ * property of the model, not of this code, and it changes when `GEMINI_MODEL`
+ * does.
+ */
+const MODEL_MAX_OUTPUT_TOKENS =
+  Number(process.env.GEMINI_MAX_OUTPUT_TOKENS) || 65_536;
+
+/**
+ * Ceiling on generated tokens, scaled by trip length.
+ *
+ * The old ceiling was `min(32_768, ...)`, a number unrelated to anything the
+ * schema allows: 30 days times `MAX_ACTIVITIES_PER_DAY` cannot fit in it, so a
+ * long trip was truncated by our own cap, surfaced as "AI returned no content",
+ * and burned every retry before landing in `failed`. Deriving it from the same
+ * bounds the response is validated against keeps the two from disagreeing.
  *
  * @param {number} daysCount - Number of days in the trip.
  * @returns {number} A token ceiling for this request.
  */
-const maxOutputTokensFor = (daysCount: number) =>
-  Math.min(32_768, 2_048 + Math.max(daysCount, 1) * 2_048);
+const maxOutputTokensFor = (daysCount: number) => {
+  const days = Math.max(daysCount, 1);
+  const needed =
+    RESPONSE_ENVELOPE_TOKENS +
+    days *
+      (TOKENS_PER_DAY_ENVELOPE + MAX_ACTIVITIES_PER_DAY * TOKENS_PER_ACTIVITY);
+
+  return Math.min(MODEL_MAX_OUTPUT_TOKENS, needed);
+};
 
 /**
  * Converts various optional types to a strict number or null.
@@ -140,6 +174,29 @@ const toActivityCreateInput = (activity: AIActivity, index: number) => {
 };
 
 /**
+ * The terminal state for a run that exhausted its retries.
+ *
+ * Only one failure path used to write `failed` - the model reporting an unknown
+ * destination. Every other failure (Gemini timeout, `MAX_TOKENS`, malformed JSON,
+ * schema mismatch) just threw, so the trip stayed `generating` forever: endless
+ * spinner, and a POST that answers 409 "already in progress" on every retry.
+ *
+ * `updateMany` rather than `update` because this also runs for a trip that was
+ * never found, where `update` would throw inside the failure handler itself. The
+ * `generating` guard keeps it from touching a trip that some other run already
+ * settled.
+ *
+ * @param {string} tripId - The trip whose run has failed for good.
+ * @returns {Promise<void>} Resolves once the status is settled.
+ */
+const markTripFailed = async (tripId: string) => {
+  await prisma.trip.updateMany({
+    where: { id: tripId, status: "generating" },
+    data: { status: "failed" },
+  });
+};
+
+/**
  * Defines the main Inngest serverless function to invoke Google Gemini,
  * retrieve an itinerary, validate data, and synchronize it back with the database.
  * Triggers async whenever 'trip.generate' event signals.
@@ -150,6 +207,20 @@ export const generateTripFunction = inngest.createFunction(
   {
     id: "generate-trip-itinerary",
     triggers: [{ event: "trip.generate" }],
+    // Runs once every retry is spent, which is the only place that can honestly
+    // call a generation dead.
+    onFailure: async ({ event, error }) => {
+      const tripId = event.data.event?.data?.tripId;
+      if (typeof tripId !== "string" || !tripId) return;
+
+      console.error("[inngest] trip generation failed", {
+        tripId,
+        runId: event.data.run_id,
+        error: error.message,
+      });
+
+      await markTripFailed(tripId);
+    },
   },
   async ({ event, step }) => {
     const { tripId } = event.data;
@@ -171,6 +242,7 @@ export const generateTripFunction = inngest.createFunction(
         updatedAt: new Date(trip.updatedAt),
       };
       const prompt = getAIPrompt({ trip: tripWithDates });
+      const maxOutputTokens = maxOutputTokensFor(trip.daysCount);
 
       const startedAt = Date.now();
       const response = await ai.models.generateContent({
@@ -182,7 +254,7 @@ export const generateTripFunction = inngest.createFunction(
           // which removes the schema-mismatch retry - a full second generation.
           responseJsonSchema: RESPONSE_JSON_SCHEMA,
           thinkingConfig: { thinkingLevel: THINKING_LEVEL },
-          maxOutputTokens: maxOutputTokensFor(trip.daysCount),
+          maxOutputTokens,
         },
       });
       const durationMs = Date.now() - startedAt;
@@ -202,9 +274,20 @@ export const generateTripFunction = inngest.createFunction(
         totalTokens: usage?.totalTokenCount,
       });
 
+      const finishReason = response.candidates?.[0]?.finishReason;
+
+      // Hitting the ceiling is not a transient failure: the same prompt produces
+      // the same length every time, so the three remaining retries would each
+      // spend a full generation to arrive back here. Fail immediately and let
+      // `onFailure` settle the trip, with a message that names the actual limit.
+      if (finishReason === FinishReason.MAX_TOKENS) {
+        throw new NonRetriableError(
+          `Itinerary exceeded the ${maxOutputTokens} output-token ceiling for a ${trip.daysCount}-day trip`,
+        );
+      }
+
       const text = response.text;
       if (!text) {
-        const finishReason = response.candidates?.[0]?.finishReason;
         throw new Error(
           `AI returned no content (finishReason: ${finishReason ?? "unknown"})`,
         );
@@ -229,7 +312,7 @@ export const generateTripFunction = inngest.createFunction(
       await step.run("handle-invalid-location", async () => {
         await prisma.trip.update({
           where: { id: tripId },
-          data: { status: "failed", aiGenerated: false },
+          data: { status: "failed" },
         });
       });
 
@@ -265,7 +348,6 @@ export const generateTripFunction = inngest.createFunction(
         prisma.trip.update({
           where: { id: tripId },
           data: {
-            aiGenerated: true,
             status: "generated",
             imageUrl: destinationImage,
           },

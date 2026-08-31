@@ -28,7 +28,12 @@ import { getGoogleNearbyPlaces } from "@/lib/google-maps-api";
 import { LiveGuideFormValues, MappedPlace } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formSchema } from "@/lib/validators";
-import { RADIUS_OPTIONS } from "@/lib/variables";
+import {
+  formatRadiusLabel,
+  radiusFieldValue,
+  radiusFromFieldValue,
+  RADIUS_OPTIONS_METERS,
+} from "@/lib/variables";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Check, MapPin, Star } from "lucide-react";
 import { useState } from "react";
@@ -78,7 +83,7 @@ const LiveGuideForm = () => {
   });
 
   const { errors } = form.formState;
-  const radiusValue = form.watch("radius");
+  const selectedRadiusMeters = radiusFromFieldValue(form.watch("radius"));
   const selectedCount = form.watch("selectedPlaces")?.length ?? 0;
 
   const [googleMapsUrl, setGoogleMapsUrl] = useState("");
@@ -104,9 +109,23 @@ const LiveGuideForm = () => {
         setCoords({ lat, lng });
 
         try {
-          const address = await getAddressFromCoordinates(lat, lng);
-          if (!address) throw new Error("Failed to fetch address");
+          const result = await getAddressFromCoordinates(lat, lng);
 
+          if (!result.success) {
+            // Being throttled is not the same as failing, and the old code told
+            // the user the same thing either way.
+            toast.error(
+              result.reason === "rate-limited"
+                ? `Too many location lookups. Try again in ${Math.max(
+                    1,
+                    Math.ceil(result.retryAfterMs / 1000),
+                  )}s.`
+                : "Unable to retrieve your location. Please try again.",
+            );
+            return;
+          }
+
+          const { address } = result;
           const formattedLocation = [
             [address.road, address.house_number].filter(Boolean).join(" "),
             address.town ?? address.city,
@@ -142,9 +161,7 @@ const LiveGuideForm = () => {
       return;
     }
 
-    const radiusMeters = RADIUS_OPTIONS.find(
-      (option) => option.label === form.getValues("radius"),
-    )?.meters;
+    const radiusMeters = radiusFromFieldValue(form.getValues("radius"));
 
     if (!radiusMeters) {
       form.setError("radius", {
@@ -174,6 +191,12 @@ const LiveGuideForm = () => {
 
       setAvailablePlaces(result.places);
       form.setValue("selectedPlaces", [], { shouldValidate: false });
+    } catch (error) {
+      // A server action that throws - dropped connection, Places outage, a redeploy
+      // mid-request - rejects the promise instead of returning `success: false`.
+      // Without this the button silently re-enabled and the user was told nothing.
+      console.error("Nearby place search failed:", error);
+      toast.error("Couldn't search for places. Please try again.");
     } finally {
       setIsSearching(false);
     }
@@ -185,9 +208,7 @@ const LiveGuideForm = () => {
       return;
     }
 
-    const radiusMeters = RADIUS_OPTIONS.find(
-      (option) => option.label === data.radius,
-    )?.meters;
+    const radiusMeters = radiusFromFieldValue(data.radius);
 
     if (!radiusMeters) {
       form.setError("radius", {
@@ -221,6 +242,9 @@ const LiveGuideForm = () => {
       setGoogleMapsUrl(generatedUrl);
       toast.success("Route created successfully!");
       setOpen(true);
+    } catch (error) {
+      console.error("Saving the live guide route failed:", error);
+      toast.error("Couldn't save your route. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -297,12 +321,14 @@ const LiveGuideForm = () => {
                                 variant="outline"
                                 className={cn(
                                   "h-11 w-full lg:h-9",
-                                  radiusValue
+                                  selectedRadiusMeters
                                     ? "text-foreground"
                                     : "text-gray-500",
                                 )}
                               >
-                                {radiusValue || "Select Radius"}
+                                {selectedRadiusMeters
+                                  ? formatRadiusLabel(selectedRadiusMeters)
+                                  : "Select Radius"}
                               </Button>
                             </FormControl>
                           </DropdownMenuTrigger>
@@ -311,16 +337,18 @@ const LiveGuideForm = () => {
                               Select a radius
                             </DropdownMenuLabel>
                             <DropdownMenuGroup>
-                              {RADIUS_OPTIONS.map((option) => (
+                              {RADIUS_OPTIONS_METERS.map((meters) => (
                                 <DropdownMenuItem
-                                  key={option.label}
+                                  key={meters}
                                   onSelect={() =>
-                                    form.setValue("radius", option.label, {
-                                      shouldValidate: true,
-                                    })
+                                    form.setValue(
+                                      "radius",
+                                      radiusFieldValue(meters),
+                                      { shouldValidate: true },
+                                    )
                                   }
                                 >
-                                  {option.label}
+                                  {formatRadiusLabel(meters)}
                                 </DropdownMenuItem>
                               ))}
                             </DropdownMenuGroup>
@@ -408,7 +436,7 @@ const LiveGuideForm = () => {
                                 )}
                               >
                                 {isSelected && (
-                                  <Check className="h-3 w-3 text-white" />
+                                  <Check className="h-3 w-3 text-primary-foreground" />
                                 )}
                               </div>
 

@@ -7,9 +7,12 @@ import "./globals.css";
 
 import { Inter } from "next/font/google";
 
+// The variable name is deliberately not `--font-sans`: that is the Tailwind
+// theme token, and having next/font define the same name made the token
+// self-referential and its actual value hard to follow.
 const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {

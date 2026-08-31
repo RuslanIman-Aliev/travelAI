@@ -1,6 +1,9 @@
 "use server";
 
+import { requireUserId } from "@/auth";
+import { checkRateLimit } from "../security";
 import { GooglePlaceForLive, MappedPlace } from "../types";
+import { nearbyPlacesSearchSchema } from "../validators";
 
 const SEARCH_NEARBY_URL =
   "https://places.googleapis.com/v1/places:searchNearby";
@@ -76,6 +79,11 @@ function calculateDistance(
 /**
  * Searches Google Places for points of interest around a coordinate.
  *
+ * `"use server"` makes every export in this file a public endpoint, and this one
+ * spends money on each call, so it authenticates, rate limits and validates its
+ * own input before any of that reaches Google - the same boundary
+ * `getAddressFromCoordinates` applies to the free geocoder next door.
+ *
  * Uses a server-only key (never `NEXT_PUBLIC_`), and reports failures instead of
  * returning an empty list - the previous version made a rejected API key look
  * identical to "there is nothing near you".
@@ -90,6 +98,41 @@ export async function getGoogleNearbyPlaces(
   lng: number,
   radiusInMeters: number,
 ): Promise<NearbyPlacesResult> {
+  let userId: string;
+  try {
+    userId = await requireUserId();
+  } catch {
+    return { success: false, message: "Please sign in to search for places." };
+  }
+
+  const rateLimit = checkRateLimit(`nearby-places:${userId}`, {
+    limit: 10,
+    windowMs: 60_000,
+  });
+
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      message: "Too many place searches. Please try again in a moment.",
+    };
+  }
+
+  const parsed = nearbyPlacesSearchSchema.safeParse({
+    lat,
+    lng,
+    radiusInMeters,
+  });
+
+  if (!parsed.success) {
+    return { success: false, message: "Invalid search location or radius." };
+  }
+
+  const {
+    lat: searchLat,
+    lng: searchLng,
+    radiusInMeters: radius,
+  } = parsed.data;
+
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) {
     console.error("GOOGLE_PLACES_API_KEY is not configured");
@@ -109,8 +152,8 @@ export async function getGoogleNearbyPlaces(
         maxResultCount: 20,
         locationRestriction: {
           circle: {
-            center: { latitude: lat, longitude: lng },
-            radius: radiusInMeters,
+            center: { latitude: searchLat, longitude: searchLng },
+            radius,
           },
         },
         rankPreference: "POPULARITY",
@@ -140,8 +183,8 @@ export async function getGoogleNearbyPlaces(
         rating: place.rating ?? 0,
         userRatingCount: place.userRatingCount ?? 0,
         distance: calculateDistance(
-          lat,
-          lng,
+          searchLat,
+          searchLng,
           place.location.latitude,
           place.location.longitude,
         ),
