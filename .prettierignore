@@ -9,3 +9,6 @@ public
 
 # Vendored shadcn/ui primitives - kept as generated so they can be re-pulled.
 components/ui
+
+# Generated audit report - prose and wide tables, not source.
+AUDIT.md

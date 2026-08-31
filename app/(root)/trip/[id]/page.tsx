@@ -1,12 +1,14 @@
 import LoadingSpinner from "@/components/trip/loading";
+import RetryGenerationButton from "@/components/trip/retry-generation-button";
 import TripHeader from "@/components/trip/header";
 import TripJourneyView from "@/components/trip/trip-journey-view";
 import DayChanger from "@/components/trip/dayChanger";
 import { Button } from "@/components/ui/button";
 import RedirectButton from "@/components/utils/redirect-button";
+import StatusScreen from "@/components/utils/status-screen";
 import { getTripById } from "@/lib/actions/trip.actions";
 import { getBudgetRange, summarizeCosts } from "@/lib/cost";
-import { MapPinOff } from "lucide-react";
+import { AlertTriangle, MapPinOff } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -19,39 +21,52 @@ const TripPage = async (props: {
   const searchParams = await props.searchParams;
   const result = await getTripById(id);
 
+  // A `notFound()` here used to swallow every failure, including Prisma being
+  // briefly unreachable - telling the user their trip does not exist when it
+  // does. Only a genuine miss is a 404; a lookup failure gets a retry screen.
   if (!result.success) {
-    notFound();
+    if (result.reason === "not-found") {
+      notFound();
+    }
+
+    return (
+      <StatusScreen
+        icon={AlertTriangle}
+        tone="danger"
+        title="We couldn't load this trip"
+        description="Something went wrong on our side. Your trip is still there - please try again."
+      >
+        <Button className="h-11 lg:h-9" asChild>
+          <Link href={`/trip/${id}`}>Try again</Link>
+        </Button>
+        <Button variant="outline" className="h-11 lg:h-9" asChild>
+          <Link href="/">Back to your trips</Link>
+        </Button>
+      </StatusScreen>
+    );
   }
 
   const trip = result.trip;
 
-  // A failed trip still has `aiGenerated === false`, so branching on status
-  // rather than on three independent conditions is what stops the error state
-  // and the loading spinner from rendering at the same time.
+  // `status` is the only thing this branches on. There used to be an
+  // `aiGenerated` boolean saying the same thing a second time, and every screen
+  // here had to keep the two readings in agreement.
   if (trip.status === "failed") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-dvh gap-6 p-4">
-        <div className="bg-red-100 p-4 rounded-full">
-          <MapPinOff className="w-12 h-12 text-red-500" />
-        </div>
-
-        <div className="text-center space-y-2">
-          <h1 className="text-xl sm:text-2xl font-bold">
-            We couldn&apos;t find {trip.destination}
-          </h1>
-          <p className="max-w-md">
-            Our AI guide got lost looking for that location. Please check the
-            spelling or try a more specific city name (e.g., Paris, France).
-          </p>
-        </div>
-
+      <StatusScreen
+        icon={MapPinOff}
+        tone="danger"
+        title={`We couldn't build an itinerary for ${trip.destination}`}
+        description="The generation didn't complete. This is often temporary - if it keeps failing, check the spelling or try a more specific city name (e.g. Paris, France)."
+      >
+        <RetryGenerationButton tripId={trip.id} />
         <RedirectButton />
-      </div>
+      </StatusScreen>
     );
   }
 
-  if (!trip.aiGenerated || trip.status !== "generated") {
-    return <LoadingSpinner tripId={trip.id} />;
+  if (trip.status !== "generated") {
+    return <LoadingSpinner tripId={trip.id} status={trip.status} />;
   }
 
   const tripDays = trip.tripDays;
@@ -82,7 +97,6 @@ const TripPage = async (props: {
         <Suspense fallback={<div className="h-96" />}>
           <TripJourneyView
             day={day}
-            dayIndex={dayIndex}
             budgetSummary={budgetSummary}
             totalCostSummary={totalCostSummary}
           />

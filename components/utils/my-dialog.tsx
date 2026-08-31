@@ -27,8 +27,8 @@ export function MyModal({
         <DialogHeader>
           <DialogTitle>You successfully created a route!</DialogTitle>
           <DialogDescription>
-            Your route has been created successfully. You can open it in Google
-            Maps or move to your dashboard.
+            Your route is saved. Open it in Google Maps now, or find it again
+            under Saved routes.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2 md:flex-row md:gap-0 md:justify-between">
@@ -37,10 +37,10 @@ export function MyModal({
             className="mt-4 cursor-pointer h-11 lg:h-9"
             onClick={() => {
               setOpen(false);
-              router.push("/");
+              router.push("/live-guide/history");
             }}
           >
-            Go to Dashboard
+            See saved routes
           </Button>
           <Button
             asChild
@@ -53,7 +53,7 @@ export function MyModal({
               rel="noopener noreferrer"
               onClick={() => {
                 setOpen(false);
-                router.push("/");
+                router.push("/live-guide/history");
               }}
             >
               Open in Google Maps

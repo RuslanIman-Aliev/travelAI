@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { cookies } from "next/headers";
 import { cache } from "react";
+import { E2E_COOKIE_NAME } from "./lib/auth-cookies";
 import { UserFacingError } from "./lib/errors";
 import { prisma } from "./prisma";
 
@@ -18,7 +19,9 @@ export const isTestAuthEnabled =
   process.env.NODE_ENV !== "production" &&
   process.env.ENABLE_TEST_AUTH === "true";
 
-export const E2E_COOKIE_NAME = "e2e-auth";
+// Re-exported so existing imports keep working; the constant lives in a leaf
+// module because `middleware.ts` needs it without pulling in Prisma.
+export { E2E_COOKIE_NAME };
 
 const nextAuth = NextAuth({
   adapter: PrismaAdapter(prisma),

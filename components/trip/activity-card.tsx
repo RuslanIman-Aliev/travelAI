@@ -24,7 +24,7 @@ export const ActivityCard = ({ activity }: { activity: Activity }) => {
           <div className="flex items-start justify-between gap-3">
             <div>
               <CardTitle className="text-lg">{timeLabel}</CardTitle>
-              <CardDescription className="text-sm text-white/70">
+              <CardDescription className="text-sm text-muted-foreground">
                 {title}
               </CardDescription>
             </div>
@@ -41,12 +41,12 @@ export const ActivityCard = ({ activity }: { activity: Activity }) => {
           </div>
         </CardHeader>
         <CardContent>
-          <CardDescription className="text-sm text-white/70">
+          <CardDescription className="text-sm text-muted-foreground">
             {description}
           </CardDescription>
         </CardContent>
         <CardFooter className="flex items-center justify-between">
-          <CardDescription className="text-sm text-white/70">
+          <CardDescription className="text-sm text-muted-foreground">
             Estimated Cost: {costLabel}
           </CardDescription>
         </CardFooter>

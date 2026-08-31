@@ -191,25 +191,67 @@ export const formatBudgetRange = (budget: BudgetRange | null) => {
 };
 
 /**
- * Decides whether a summary exceeds a budget. Returns false when the two use
- * different currencies, since comparing them would be meaningless.
+ * The outcome of comparing spending to a budget.
+ *
+ * `unknown` is a real answer, not a missing one. The budget is captured in USD
+ * while the model prices activities in the destination's currency, so a trip to
+ * Paris compares 900 USD against costs in EUR - and the old boolean returned
+ * `false` for that, which the page rendered as a calm green "within budget".
+ * That is exactly the trip where the warning mattered.
+ */
+export type BudgetComparison = "under" | "over" | "unknown";
+
+/**
+ * Compares aggregated activity costs to a budget, refusing to guess when the two
+ * are not denominated the same way.
  *
  * @param {CostSummary} summary - Aggregated activity costs.
  * @param {BudgetRange|null} budget - The trip's budget range.
- * @returns {boolean} True only when a like-for-like comparison exceeds the max.
+ * @returns {BudgetComparison} Whether spending is over, under, or not comparable.
  */
-export const isOverBudget = (
+export const compareToBudget = (
   summary: CostSummary,
   budget: BudgetRange | null,
-) => {
-  if (!budget || !summary.hasValues || summary.hasMixedCurrency) return false;
+): BudgetComparison => {
+  if (!budget || !summary.hasValues) return "unknown";
+  if (summary.hasMixedCurrency) return "unknown";
+
   if (
     summary.currency &&
     budget.currency &&
     summary.currency !== budget.currency
   ) {
-    return false;
+    return "unknown";
   }
 
-  return summary.totalCents > budget.max * 100;
+  return summary.totalCents > budget.max * 100 ? "over" : "under";
+};
+
+/**
+ * Explains an `unknown` comparison in the user's terms.
+ *
+ * @param {CostSummary} summary - Aggregated activity costs.
+ * @param {BudgetRange|null} budget - The trip's budget range.
+ * @returns {string|null} A short reason, or null when the two are comparable.
+ */
+export const budgetComparisonNote = (
+  summary: CostSummary,
+  budget: BudgetRange | null,
+): string | null => {
+  if (compareToBudget(summary, budget) !== "unknown") return null;
+  if (!budget) return null;
+  if (!summary.hasValues) return "No activity costs to compare yet";
+  if (summary.hasMixedCurrency) {
+    return "Activities are priced in several currencies - totals cannot be compared to the budget";
+  }
+
+  if (
+    summary.currency &&
+    budget.currency &&
+    summary.currency !== budget.currency
+  ) {
+    return `Budget is in ${budget.currency}, activities are priced in ${summary.currency} - not comparable`;
+  }
+
+  return null;
 };

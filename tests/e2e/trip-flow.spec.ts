@@ -24,32 +24,11 @@ test.describe("Trip flow", () => {
       "DATABASE_URL is required for e2e tests",
     );
 
-    // Stub the generation endpoint so the flow stays deterministic without a
-    // running Inngest dev server or a real Gemini call.
-    await page.route("**/api/trips/*/generation", async (route) => {
-      if (route.request().method() === "POST") {
-        await route.fulfill({
-          status: 202,
-          contentType: "application/json",
-          body: JSON.stringify({
-            success: true,
-            message: "Background job started",
-          }),
-        });
-        return;
-      }
-
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          success: true,
-          status: "generating",
-          aiGenerated: false,
-        }),
-      });
-    });
-
+    // No route stubbing. The generation endpoint used to be faked here, which
+    // meant the one test that needed a browser, a server and a database checked
+    // none of the seam between them. Creation now enqueues server-side against
+    // the Inngest sink (see playwright.config.ts), so the status the page polls
+    // is the status actually written to the database.
     await page.goto("/");
 
     await page.getByRole("button", { name: "Sign in" }).click();
@@ -84,6 +63,17 @@ test.describe("Trip flow", () => {
     await page.getByRole("button", { name: /Generate trip/i }).click();
 
     await expect(page).toHaveURL(/\/trip\/[a-z0-9]+/i);
+    // Reached only if `insertTrip` claimed the trip and the event was accepted:
+    // a failed enqueue releases the claim and renders the failure screen instead.
     await expect(page.getByText("Processing your request")).toBeVisible();
+  });
+
+  test("anonymous visitor is sent to the sign-in screen", async ({ page }) => {
+    await page.goto("/new-trip");
+
+    await expect(page).toHaveURL(/\/sign-in/);
+    await expect(
+      page.getByRole("heading", { name: /Sign in to Travel AI/i }),
+    ).toBeVisible();
   });
 });

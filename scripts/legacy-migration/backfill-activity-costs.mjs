@@ -7,7 +7,8 @@
  * exactly the values the ingestion path would have produced for the same text.
  * No new dependency, and no second implementation to drift out of sync.
  *
- * Usage:  node prisma/manual/backfill-activity-costs.mjs [--apply]
+ * Usage:  node scripts/legacy-migration/backfill-activity-costs.mjs [--apply]
+ *         Paths below are relative to the repository root - run it from there.
  *         Without --apply it only reports what it would write.
  */
 import { execFileSync } from "node:child_process";
@@ -24,9 +25,19 @@ const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "cost-"));
 // same on Windows and POSIX.
 execFileSync(
   process.execPath,
-  [path.join("node_modules", "typescript", "bin", "tsc"),
-   "lib/cost.ts", "--outDir", outDir, "--module", "esnext",
-   "--target", "es2022", "--moduleResolution", "bundler", "--skipLibCheck"],
+  [
+    path.join("node_modules", "typescript", "bin", "tsc"),
+    "lib/cost.ts",
+    "--outDir",
+    outDir,
+    "--module",
+    "esnext",
+    "--target",
+    "es2022",
+    "--moduleResolution",
+    "bundler",
+    "--skipLibCheck",
+  ],
   { stdio: "inherit" },
 );
 const { parseCostString } = await import(
@@ -48,7 +59,9 @@ for (const row of rows) {
   else stats.unparsed++;
 
   if (samples.length < 12) {
-    samples.push(`${JSON.stringify(row.estimatedCost)} -> ${JSON.stringify(parsed)}`);
+    samples.push(
+      `${JSON.stringify(row.estimatedCost)} -> ${JSON.stringify(parsed)}`,
+    );
   }
 
   if (APPLY) {

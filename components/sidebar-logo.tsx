@@ -38,7 +38,7 @@ export function SidebarLogo() {
       </div>
 
       <div className="flex flex-col items-center text-center">
-        <span className="font-bold text-2xl tracking-tight bg-clip-text text-transparent bg-linear-to-b from-white to-white/70">
+        <span className="font-bold text-2xl tracking-tight bg-clip-text text-transparent bg-linear-to-b from-foreground to-foreground/70">
           TravelGuide
         </span>
         <span className="text-[11px] font-semibold text-blue-400 tracking-widest uppercase">
