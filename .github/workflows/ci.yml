@@ -21,6 +21,7 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       NEXTAUTH_SECRET: ci-placeholder-not-a-real-secret
       GEMINI_API_KEY: ci-placeholder
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3001/api/v1
       NEXT_TELEMETRY_DISABLED: "1"
 
     steps:
@@ -80,6 +81,7 @@ jobs:
       NEXTAUTH_URL: http://127.0.0.1:3000
       AUTH_TRUST_HOST: "true"
       GEMINI_API_KEY: e2e-placeholder
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3001/api/v1
       E2E_TEST_EMAIL: e2e@travel-ai.local
       E2E_TEST_NAME: E2E User
       NEXT_TELEMETRY_DISABLED: "1"

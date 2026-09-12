@@ -1,7 +1,7 @@
 # Text files are stored with LF in the repository regardless of the platform they
 # were authored on. Without this, a contributor whose `core.autocrlf` differs can
 # commit CRLF blobs, and `format:check` then fails in CI for everyone.
-* text=auto
+* text=auto eol=lf
 
 # Never touched by line-ending conversion.
 *.png binary

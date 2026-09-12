@@ -1,5 +1,8 @@
 .next
 node_modules
+
+# Nest app: has its own prettier config and its own `format` script.
+api
 coverage
 playwright-report
 test-results

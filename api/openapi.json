@@ -1,0 +1,1062 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "description": "Counts trips, so the check fails when the database is unreachable rather than only when the process is down. The only route that needs no session.",
+        "operationId": "AppController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The service and its database are reachable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "description": "Answers from the session the guard already resolved, so it costs no extra query beyond the one that authorised the request.",
+        "operationId": "MeController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionUserDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The signed-in user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/trips/{id}/generation": {
+      "get": {
+        "description": "Polled by the trip page while a trip is being generated. Reads one column, so it is cheap enough to call on a schedule.",
+        "operationId": "GenerationController_getGenerationStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Trip id, a cuid.",
+            "schema": {
+              "example": "cmf3k9x2b0000v8mc4h7q1abc",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Where the itinerary is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationStatusDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A path or query parameter failed its schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such trip, or it belongs to somebody else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Itinerary generation status",
+        "tags": [
+          "generation"
+        ]
+      }
+    },
+    "/api/v1/trips": {
+      "get": {
+        "description": "Newest first. Every query is scoped to the session, so trips belonging to other users are unreachable. An empty result is a 200 with an empty array, not a 404.",
+        "operationId": "TripsController_findAll",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by lifecycle status. An empty value means no filter; an unknown one is rejected.",
+            "schema": {
+              "enum": [
+                "draft",
+                "generating",
+                "generated",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Trips per page, at most 50. Anything larger falls back to the default rather than being clamped.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page to read. An unparseable value falls back to the default.",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's trips, newest first, with pagination metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "trips",
+                    "pagination"
+                  ],
+                  "properties": {
+                    "trips": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TripDto"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/PaginationMetaDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A path or query parameter failed its schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "List the caller's trips",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/api/v1/trips/{id}": {
+      "get": {
+        "description": "Includes days sorted by number and their activities sorted by order. Ownership is part of the lookup, so an id owned by another user is indistinguishable from one that does not exist.",
+        "operationId": "TripsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Trip id, a cuid.",
+            "schema": {
+              "example": "cmf3k9x2b0000v8mc4h7q1abc",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's trip, with its days and activities.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A path or query parameter failed its schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such trip, or it belongs to somebody else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Read one trip with its itinerary",
+        "tags": [
+          "trips"
+        ]
+      },
+      "delete": {
+        "description": "Days and activities go with it through the schema cascade. Deleting something that is not there answers 404 rather than pretending to succeed.",
+        "operationId": "TripsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Trip id, a cuid.",
+            "schema": {
+              "example": "cmf3k9x2b0000v8mc4h7q1abc",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The trip was removed."
+          },
+          "400": {
+            "description": "A path or query parameter failed its schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such trip, or it belongs to somebody else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded; `Retry-After` says for how long.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Delete a trip",
+        "tags": [
+          "trips"
+        ]
+      },
+      "patch": {
+        "description": "Title only - the destination an itinerary was generated from cannot be changed, so renaming never invalidates the plan.",
+        "operationId": "TripsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Trip id, a cuid.",
+            "schema": {
+              "example": "cmf3k9x2b0000v8mc4h7q1abc",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "description": "The new display name. Surrounding whitespace is trimmed."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The trip was renamed."
+          },
+          "400": {
+            "description": "The id or the body failed its schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such trip, or it belongs to somebody else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded; `Retry-After` says for how long.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Rename a trip",
+        "tags": [
+          "trips"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Travel AI API",
+    "description": "Server for the Travel AI web app: trips and AI-generated itineraries.  This API does not issue sessions. The Next.js front end signs the user in through Auth.js, which writes the session to Postgres; every request here is authorised by looking that session up by its cookie. The bearer scheme carries the same token, for the case where the front end is served from a different site and the browser would drop the cookie.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "health",
+      "description": "Liveness probe. The only route that needs no session."
+    },
+    {
+      "name": "auth",
+      "description": "Who the current session belongs to."
+    },
+    {
+      "name": "trips",
+      "description": "Reading, renaming and deleting the caller trips."
+    },
+    {
+      "name": "generation",
+      "description": "Progress of an itinerary being generated."
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local development"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "authjs.session-token",
+        "description": "Session cookie set by the Next.js app on sign-in. A browser sends it automatically; for a manual call, copy its value out of devtools."
+      },
+      "session-bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "The same session token as the cookie carries, for clients that cannot send cookies."
+      }
+    },
+    "schemas": {
+      "HealthDto": {
+        "type": "object",
+        "properties": {
+          "trips": {
+            "type": "number",
+            "description": "Trips in the database. The number is incidental; that it could be counted at all is the point.",
+            "example": 35,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "trips"
+        ]
+      },
+      "SessionUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The user's id, as stored by Auth.js.",
+            "example": "cmf3k9x2b0000v8mc4h7q1abc"
+          },
+          "email": {
+            "type": "string",
+            "description": "Null for an account that never carried one.",
+            "example": "traveller@example.com",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name from the identity provider.",
+            "example": "Alex Traveller",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name"
+        ]
+      },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "description": "Repeats the HTTP status, so a logged body is self-describing.",
+            "example": 404
+          },
+          "message": {
+            "description": "What went wrong, safe to show a user. An array when several fields failed validation at once - one entry per field, each prefixed with its path.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "example": "No trip found for this user"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "When the failure was rendered.",
+            "example": "2026-09-12T11:42:07.331Z",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string",
+            "description": "Path that failed, including the global prefix.",
+            "example": "/api/v1/trips/cmf3k9x2b0000v8mc4h7q1abc"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message",
+          "timestamp",
+          "path"
+        ]
+      },
+      "GenerationStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Where the itinerary is. The page stops polling once this reaches `generated` or `failed`.",
+            "enum": [
+              "draft",
+              "generating",
+              "generated",
+              "failed"
+            ],
+            "example": "generating"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "TripDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Trip id, a cuid.",
+            "example": "cmf3k9x2b0000v8mc4h7q1abc"
+          },
+          "userId": {
+            "type": "string",
+            "description": "Owner. Every query is scoped to the caller, so this is always theirs.",
+            "example": "cmf3k9x2b0000v8mc4h7q1xyz"
+          },
+          "title": {
+            "type": "string",
+            "description": "User-chosen name. Null until renamed; the UI falls back to `destination`.",
+            "example": "Summer in Paris",
+            "nullable": true
+          },
+          "destination": {
+            "type": "string",
+            "description": "City the itinerary was generated for. Renaming a trip does not change it, so a rename can never invalidate the plan.",
+            "example": "Paris"
+          },
+          "country": {
+            "type": "string",
+            "description": "Country the destination is in.",
+            "example": "France",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "description": "First calendar day. Only the date part is meaningful.",
+            "example": "2026-06-10T00:00:00.000Z",
+            "format": "date-time"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "Last calendar day, inclusive.",
+            "example": "2026-06-14T00:00:00.000Z",
+            "format": "date-time"
+          },
+          "daysCount": {
+            "type": "number",
+            "description": "Days covered, counting both endpoints.",
+            "example": 5,
+            "minimum": 1
+          },
+          "imageUrl": {
+            "type": "string",
+            "description": "Destination photo from Pexels. Null until generation finishes, or after a miss.",
+            "example": "https://images.pexels.com/photos/338515/pexels-photo-338515.jpeg",
+            "nullable": true
+          },
+          "budgetMin": {
+            "type": "number",
+            "description": "Lower end of the budget range, in whole units of `budgetCurrency`.",
+            "example": 500,
+            "nullable": true
+          },
+          "budgetMax": {
+            "type": "number",
+            "description": "Upper end of the budget range.",
+            "example": 1500,
+            "nullable": true
+          },
+          "budgetCurrency": {
+            "type": "string",
+            "description": "Set only when a range was given.",
+            "example": "USD",
+            "nullable": true
+          },
+          "interests": {
+            "description": "Interests the itinerary was generated for. Empty when none were chosen.",
+            "example": [
+              "Museums",
+              "Food"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "description": "Lifecycle of the itinerary. `generating` is claimed before the background job is enqueued, so a second request cannot start a duplicate run.",
+            "enum": [
+              "draft",
+              "generating",
+              "generated",
+              "failed"
+            ],
+            "example": "generated"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the trip was created.",
+            "example": "2026-05-02T09:14:33.120Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Last write to the row, which includes the status transitions a generation goes through.",
+            "example": "2026-05-02T09:16:01.884Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "title",
+          "destination",
+          "country",
+          "startDate",
+          "endDate",
+          "daysCount",
+          "imageUrl",
+          "budgetMin",
+          "budgetMax",
+          "budgetCurrency",
+          "interests",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PaginationMetaDto": {
+        "type": "object",
+        "properties": {
+          "totalCount": {
+            "type": "number",
+            "description": "Trips matching the filter, across every page.",
+            "example": 37,
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "Computed from `totalCount` and the limit the server actually applied, which is not always the one that was asked for.",
+            "example": 4,
+            "minimum": 0
+          },
+          "currentPage": {
+            "type": "number",
+            "description": "Echo of the page that was served.",
+            "example": 1,
+            "minimum": 1
+          },
+          "limit": {
+            "type": "number",
+            "description": "Page size the server applied. Differs from the requested one when that was out of range.",
+            "example": 10,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "totalCount",
+          "totalPages",
+          "currentPage",
+          "limit"
+        ]
+      },
+      "ActivityDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Activity id, a cuid.",
+            "example": "cmf3k9x2b0000v8mc4h7q1act"
+          },
+          "dayId": {
+            "type": "string",
+            "description": "Day this activity belongs to.",
+            "example": "cmf3k9x2b0000v8mc4h7q1day"
+          },
+          "title": {
+            "type": "string",
+            "description": "What the activity is, as shown in the itinerary.",
+            "example": "Louvre Museum"
+          },
+          "description": {
+            "type": "string",
+            "description": "Short blurb from the model.",
+            "example": "World-famous art museum in a former royal palace.",
+            "nullable": true
+          },
+          "time": {
+            "type": "string",
+            "description": "Free text as the model produced it, not a parsed time.",
+            "example": "09:00",
+            "nullable": true
+          },
+          "placeName": {
+            "type": "string",
+            "description": "Place as the model named it. Falls back to the title when the model gave only one of the two.",
+            "example": "Louvre Museum",
+            "nullable": true
+          },
+          "placeType": {
+            "type": "string",
+            "description": "Category the UI draws an icon for.",
+            "example": "Museum",
+            "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "description": "Null when the model returned no usable pair; both coordinates are set or neither is.",
+            "example": 48.8606,
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "description": "Set only together with `latitude`; never one without the other.",
+            "example": 2.3376,
+            "nullable": true
+          },
+          "estimatedCostCents": {
+            "type": "number",
+            "description": "Money in minor units, parsed once on ingestion rather than at render time.",
+            "example": 2200,
+            "nullable": true
+          },
+          "estimatedCostCurrency": {
+            "type": "string",
+            "description": "Currency of `estimatedCostCents`, as the model reported it.",
+            "example": "EUR",
+            "nullable": true
+          },
+          "estimatedCostIsFree": {
+            "type": "boolean",
+            "description": "True when the model said the activity is free, which is not the same as a cost of zero being unknown.",
+            "example": false
+          },
+          "order": {
+            "type": "number",
+            "description": "Position as generated. Activities come back sorted by this.",
+            "example": 1,
+            "minimum": 1
+          },
+          "userOrder": {
+            "type": "number",
+            "description": "Position the user dragged it to, when they have. Kept apart from `order` so a regenerated itinerary does not inherit an arrangement of activities that no longer exist.",
+            "example": 2,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "dayId",
+          "title",
+          "description",
+          "time",
+          "placeName",
+          "placeType",
+          "latitude",
+          "longitude",
+          "estimatedCostCents",
+          "estimatedCostCurrency",
+          "estimatedCostIsFree",
+          "order",
+          "userOrder"
+        ]
+      },
+      "DayDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Day id, a cuid.",
+            "example": "cmf3k9x2b0000v8mc4h7q1day"
+          },
+          "tripId": {
+            "type": "string",
+            "description": "Trip this day belongs to.",
+            "example": "cmf3k9x2b0000v8mc4h7q1abc"
+          },
+          "dayNumber": {
+            "type": "number",
+            "description": "One-based. Days come back sorted by this.",
+            "example": 1,
+            "minimum": 1
+          },
+          "date": {
+            "type": "string",
+            "description": "Calendar day this covers. Only the date part is meaningful.",
+            "example": "2026-06-10T00:00:00.000Z",
+            "format": "date-time",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "description": "One-line summary of the day from the model.",
+            "example": "Classic first day: the Louvre, then the Seine at dusk.",
+            "nullable": true
+          },
+          "activities": {
+            "description": "Sorted by `order`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "tripId",
+          "dayNumber",
+          "date",
+          "summary",
+          "activities"
+        ]
+      },
+      "TripDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Trip id, a cuid.",
+            "example": "cmf3k9x2b0000v8mc4h7q1abc"
+          },
+          "userId": {
+            "type": "string",
+            "description": "Owner. Every query is scoped to the caller, so this is always theirs.",
+            "example": "cmf3k9x2b0000v8mc4h7q1xyz"
+          },
+          "title": {
+            "type": "string",
+            "description": "User-chosen name. Null until renamed; the UI falls back to `destination`.",
+            "example": "Summer in Paris",
+            "nullable": true
+          },
+          "destination": {
+            "type": "string",
+            "description": "City the itinerary was generated for. Renaming a trip does not change it, so a rename can never invalidate the plan.",
+            "example": "Paris"
+          },
+          "country": {
+            "type": "string",
+            "description": "Country the destination is in.",
+            "example": "France",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "description": "First calendar day. Only the date part is meaningful.",
+            "example": "2026-06-10T00:00:00.000Z",
+            "format": "date-time"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "Last calendar day, inclusive.",
+            "example": "2026-06-14T00:00:00.000Z",
+            "format": "date-time"
+          },
+          "daysCount": {
+            "type": "number",
+            "description": "Days covered, counting both endpoints.",
+            "example": 5,
+            "minimum": 1
+          },
+          "imageUrl": {
+            "type": "string",
+            "description": "Destination photo from Pexels. Null until generation finishes, or after a miss.",
+            "example": "https://images.pexels.com/photos/338515/pexels-photo-338515.jpeg",
+            "nullable": true
+          },
+          "budgetMin": {
+            "type": "number",
+            "description": "Lower end of the budget range, in whole units of `budgetCurrency`.",
+            "example": 500,
+            "nullable": true
+          },
+          "budgetMax": {
+            "type": "number",
+            "description": "Upper end of the budget range.",
+            "example": 1500,
+            "nullable": true
+          },
+          "budgetCurrency": {
+            "type": "string",
+            "description": "Set only when a range was given.",
+            "example": "USD",
+            "nullable": true
+          },
+          "interests": {
+            "description": "Interests the itinerary was generated for. Empty when none were chosen.",
+            "example": [
+              "Museums",
+              "Food"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "description": "Lifecycle of the itinerary. `generating` is claimed before the background job is enqueued, so a second request cannot start a duplicate run.",
+            "enum": [
+              "draft",
+              "generating",
+              "generated",
+              "failed"
+            ],
+            "example": "generated"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the trip was created.",
+            "example": "2026-05-02T09:14:33.120Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Last write to the row, which includes the status transitions a generation goes through.",
+            "example": "2026-05-02T09:16:01.884Z",
+            "format": "date-time"
+          },
+          "tripDays": {
+            "description": "Sorted by `dayNumber`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "title",
+          "destination",
+          "country",
+          "startDate",
+          "endDate",
+          "daysCount",
+          "imageUrl",
+          "budgetMin",
+          "budgetMax",
+          "budgetCurrency",
+          "interests",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "tripDays"
+        ]
+      }
+    }
+  }
+}

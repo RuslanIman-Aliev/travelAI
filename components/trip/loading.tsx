@@ -10,6 +10,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import StatusScreen from "@/components/utils/status-screen";
 import { retryGeneration } from "@/lib/actions/trip.actions";
+import { apiUrl } from "@/lib/api-client";
 import type { TripStatus } from "@prisma/client";
 import { AlertCircle, Sparkles } from "lucide-react";
 import Image from "next/image";
@@ -85,7 +86,11 @@ const LoadingSpinner = ({
       }
 
       try {
-        const res = await fetch(`/api/trips/${tripId}/generation`);
+        const res = await fetch(apiUrl(`/trips/${tripId}/generation`), {
+          // The API is a different origin, so the session cookie only travels
+          // when the request asks for it.
+          credentials: "include",
+        });
 
         if (res.ok) {
           const data = await res.json();

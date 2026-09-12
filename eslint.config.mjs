@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+
+    // Nest app: linted by its own flat config via `npm run lint -w api`.
+    "api/**",
   ]),
 ]);
 

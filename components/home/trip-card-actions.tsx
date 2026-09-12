@@ -16,20 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { deleteTrip, renameTrip } from "@/lib/actions/trip.actions";
+import { apiFetch } from "@/lib/api-client";
 import { MAX_TRIP_TITLE_LENGTH } from "@/lib/validators";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-/**
- * Rename and delete for a trip card.
- *
- * `trip.actions.ts` was `insert`, `get`, `list` and `stats` - there was no way to
- * remove a trip you no longer wanted or give it a name of your own, so a bad
- * trip stayed in the list forever.
- */
 const TripCardActions = ({
   tripId,
   currentTitle,
@@ -45,31 +38,38 @@ const TripCardActions = ({
 
   const onRename = () => {
     startTransition(async () => {
-      const res = await renameTrip(tripId, title);
+      try {
+        await apiFetch(`/trips/${tripId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ title }),
+        });
 
-      if (!res.success) {
-        toast.error(res.message);
-        return;
+        toast.success("Trip renamed");
+        setRenameOpen(false);
+        router.refresh();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Something went wrong",
+        );
       }
-
-      toast.success(res.message);
-      setRenameOpen(false);
-      router.refresh();
     });
   };
 
   const onDelete = () => {
     startTransition(async () => {
-      const res = await deleteTrip(tripId);
+      try {
+        await apiFetch(`/trips/${tripId}`, {
+          method: "DELETE",
+        });
 
-      if (!res.success) {
-        toast.error(res.message);
-        return;
+        toast.success("Trip deleted");
+        setDeleteOpen(false);
+        router.refresh();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Something went wrong",
+        );
       }
-
-      toast.success(res.message);
-      setDeleteOpen(false);
-      router.refresh();
     });
   };
 
