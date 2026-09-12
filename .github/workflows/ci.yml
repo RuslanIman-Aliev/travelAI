@@ -54,6 +54,22 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The Nest app is excluded from the root tooling - it has its own configs -
+      # so without these four steps it could be broken outright and this job
+      # would still be green. `lint:check` and `format:check` rather than the
+      # writing variants: CI has to fail on drift, not quietly repair it.
+      - name: API format check
+        run: npm run format:check -w api
+
+      - name: API lint
+        run: npm run lint:check -w api
+
+      - name: API tests
+        run: npm test -w api
+
+      - name: API build
+        run: npm run build -w api
+
   e2e:
     runs-on: ubuntu-latest
     # Playwright is configured but nothing ran it, so the one test covering the
