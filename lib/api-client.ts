@@ -1,5 +1,13 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
+/**
+ * Path the API is reached through, on this origin.
+ *
+ * Relative on purpose: `next.config.ts` rewrites `/backend` to wherever the Nest
+ * app actually runs, so the browser only ever calls the site it is already on
+ * and the session cookie travels with the request. Pointing this at the API host
+ * directly would work in development and silently stop sending the cookie in
+ * production.
+ */
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
 export const apiUrl = (path: string): string =>
   `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
