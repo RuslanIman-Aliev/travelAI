@@ -2,6 +2,12 @@
 
 Travel AI is a Next.js app that helps users plan trips with AI and build live routes on a map.
 
+The backend is being moved out of Next into a separate NestJS service in
+[`api/`](./api). Reading, renaming and deleting trips and the generation status
+are served from there; creating trips, the Inngest job, Live Guide, geocoding and
+place search are still Next server actions. See [`api/README.md`](./api/README.md)
+for the split and [`docs/api.md`](./docs/api.md) for the endpoint reference.
+
 ## Features
 
 - Google OAuth authentication with NextAuth and Prisma adapter
@@ -14,6 +20,7 @@ Travel AI is a Next.js app that helps users plan trips with AI and build live ro
 ## Tech Stack
 
 - Next.js 16 (App Router), React 19, TypeScript
+- NestJS 11 for the extracted HTTP API (`api/`)
 - Tailwind CSS v4 and Radix UI
 - Prisma ORM with PostgreSQL
 - NextAuth v5
@@ -107,13 +114,24 @@ npx prisma studio
 npm run dev
 ```
 
-2. In a second terminal, start the Inngest dev server:
+2. In a second terminal, start the API:
+
+```bash
+npm run start:dev -w api
+```
+
+3. In a third terminal, start the Inngest dev server:
 
 ```bash
 npx inngest-cli@latest dev -u http://localhost:3000/api/inngest
 ```
 
-3. Open `http://localhost:3000`
+4. Open `http://localhost:3000`
+
+The browser never calls the API directly: `next.config.ts` rewrites `/backend/*`
+to it, so requests stay same-origin and the session cookie travels with them.
+Without the API running, reading the trip list still works — those pages have not
+moved yet — but renaming, deleting and the generation poll do not.
 
 Note: if the Inngest dev server is not running, trip generation jobs will not execute.
 
@@ -133,16 +151,31 @@ Note: if the Inngest dev server is not running, trip generation jobs will not ex
 
 ## API
 
-| Method | Route                        | Purpose                                              |
-| ------ | ---------------------------- | ---------------------------------------------------- |
-| `POST` | `/api/trips/{id}/generation` | Claim the trip and enqueue itinerary generation      |
-| `GET`  | `/api/trips/{id}/generation` | Read generation status, used for client-side polling |
-| `*`    | `/api/inngest`               | Inngest function endpoint                            |
-| `*`    | `/api/auth/[...nextauth]`    | NextAuth handlers                                    |
+Served by the NestJS app in [`api/`](./api), reached through the `/backend`
+rewrite. Full reference with examples: [`docs/api.md`](./docs/api.md). Swagger UI
+at `http://localhost:3001/docs`, schema in [`api/openapi.json`](./api/openapi.json).
 
-Everything else runs through Server Actions in `lib/actions/`. Those are public
-endpoints too, so each one authenticates, rate limits and validates its own input
-rather than trusting the form that called it.
+| Method   | Route                           | Purpose                                    |
+| -------- | ------------------------------- | ------------------------------------------ |
+| `GET`    | `/api/v1/health`                | Liveness probe. No session needed          |
+| `GET`    | `/api/v1/me`                    | The signed-in user                         |
+| `GET`    | `/api/v1/trips`                 | List trips, paginated and filterable       |
+| `GET`    | `/api/v1/trips/{id}`            | One trip with days and activities          |
+| `PATCH`  | `/api/v1/trips/{id}`            | Rename                                     |
+| `DELETE` | `/api/v1/trips/{id}`            | Delete                                     |
+| `GET`    | `/api/v1/trips/{id}/generation` | Generation status, polled by the trip page |
+
+Still served by Next:
+
+| Method | Route                        | Purpose                                                                                           |
+| ------ | ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/trips/{id}/generation` | Claim the trip and enqueue generation. Currently unused — generation is started from `insertTrip` |
+| `*`    | `/api/inngest`               | Inngest function endpoint                                                                         |
+| `*`    | `/api/auth/[...nextauth]`    | NextAuth handlers                                                                                 |
+
+Everything not yet moved runs through Server Actions in `lib/actions/`. Those are
+public endpoints too, so each one authenticates, rate limits and validates its own
+input rather than trusting the form that called it.
 
 ## Testing
 
@@ -204,7 +237,16 @@ app/
 		inngest/
 		trips/[id]/generation/
 components/
+api/                    NestJS API - see api/README.md
+	src/
+		auth/           Session guard, decorators, /me
+		common/         Pipe, exception filter, rate limiter, response DTOs
+		trips/          Trips and generation endpoints
+	openapi.json    Generated schema
+docs/
+	api.md          Endpoint reference
 lib/
+	api-client.ts   Typed fetch wrapper for the API
 	actions/        Server Actions (auth, trips, live guide, geocoding)
 	inngest/        Background job client + functions
 	google-maps-api/
@@ -220,9 +262,9 @@ prisma/
 
 1. User signs in with Google.
 2. User creates a trip (`insertTrip` action) and is redirected to `/trip/[id]`.
-3. The trip page sees an ungenerated trip and `POST`s to
-   `/api/trips/[id]/generation`, which claims the trip with a conditional
-   `updateMany` and sends a deduplicated `trip.generate` event.
+3. `insertTrip` claims the trip with a conditional `updateMany` and sends a
+   deduplicated `trip.generate` event, so a browser that never loads the trip page
+   cannot leave a trip with nothing scheduled to pick it up.
 4. The Inngest function calls Gemini, validates the response with Zod, and writes the
    days, activities and the `generated` status in one transaction. The request caps
    the thinking budget, and constrains decoding to a JSON Schema derived from
@@ -230,15 +272,17 @@ prisma/
    `{ "error": ... }` for an unrecognisable destination. `lib/gemini-schema.ts`
    strips the JSON Schema keywords zod emits that Gemini does not accept
    (`$schema`, `default`, `minLength`).
-5. The client polls `GET /api/trips/[id]/generation` and refreshes once the job
-   reaches a terminal state.
+5. The client polls `GET /backend/trips/[id]/generation`, which the rewrite
+   forwards to the NestJS app, and refreshes once the job reaches a terminal state.
 
 ## Known Limitations
 
-- Rate limiting is an in-memory fixed-window counter (`lib/security.ts`). On a
-  serverless host each instance keeps its own map, so the effective limit scales with
-  the number of instances. It stops accidental double-submits, not determined abuse;
-  the production shape is a shared store such as `@upstash/ratelimit` on Redis.
+- Rate limiting is an in-memory fixed-window counter. In the NestJS app it is
+  correct, because there is one long-lived process. The copy still guarding the
+  Next server actions (`lib/security.ts`) is not: on a serverless host every
+  instance keeps its own map, so the effective limit scales with the number of
+  instances. The production shape for both is a shared store such as
+  `@upstash/ratelimit` on Redis.
 - Activity costs come back from the model in the destination's currency while budgets
   are captured in USD, so over-budget warnings are suppressed when the two currencies
   differ rather than being converted.
