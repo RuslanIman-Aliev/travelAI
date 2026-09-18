@@ -2,7 +2,6 @@ import { prisma } from "@/prisma";
 import { FinishReason, GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NonRetriableError } from "inngest";
 import { parseCostString } from "../cost";
-import { toGeminiResponseSchema } from "../gemini-schema";
 import type { AIActivity, AIDay } from "../types";
 import { getAIPrompt, getPhotoByDestination } from "../utils";
 import {
@@ -45,12 +44,6 @@ const resolveThinkingLevel = (): ThinkingLevel => {
 };
 
 const THINKING_LEVEL = resolveThinkingLevel();
-
-/**
- * Built once: converting the Zod schema walks the whole tree, and it never
- * changes between requests.
- */
-const RESPONSE_JSON_SCHEMA = toGeminiResponseSchema(aiGenerationResponseSchema);
 
 /**
  * Token cost of the pieces of a response, used to size the output ceiling from
@@ -249,10 +242,7 @@ export const generateTripFunction = inngest.createFunction(
         model: MODEL,
         contents: prompt,
         config: {
-          responseMimeType: "application/json",
-          // Constrained decoding: the model can only emit a shape that parses,
-          // which removes the schema-mismatch retry - a full second generation.
-          responseJsonSchema: RESPONSE_JSON_SCHEMA,
+          // responseMimeType: "application/json",
           thinkingConfig: { thinkingLevel: THINKING_LEVEL },
           maxOutputTokens,
         },
@@ -286,6 +276,7 @@ export const generateTripFunction = inngest.createFunction(
         );
       }
 
+      // The response text is the AI's generated content.
       const text = response.text;
       if (!text) {
         throw new Error(

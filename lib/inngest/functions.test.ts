@@ -337,16 +337,12 @@ describe("generateTripFunction", () => {
       expect(configOf().maxOutputTokens).toBeGreaterThan(32_768);
     });
 
-    it("sends a schema that permits both the itinerary and the error escape hatch", async () => {
+    it("does not send a Gemini response schema", async () => {
       respondWith(validItinerary);
 
       await run();
 
-      const schema = configOf().responseJsonSchema;
-      expect(schema.anyOf).toHaveLength(2);
-      // Unsupported keywords would make Gemini reject the whole request.
-      expect(JSON.stringify(schema)).not.toContain("minLength");
-      expect(JSON.stringify(schema)).not.toContain("$schema");
+      expect(configOf().responseJsonSchema).toBeUndefined();
     });
   });
 
