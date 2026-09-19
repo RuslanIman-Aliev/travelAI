@@ -272,7 +272,15 @@ const LiveGuideForm = () => {
   const hasResults = availablePlaces.length > 0;
 
   return (
-    <div className="w-full flex justify-center items-center">
+    <div
+      className={cn(
+        "w-full flex justify-center items-center",
+        "transition-transform duration-500 ease-out motion-reduce:transition-none",
+        hasResults
+          ? "lg:translate-y-0"
+          : "lg:translate-y-[max(0px,calc(50dvh-50%))]",
+      )}
+    >
       <Card className="w-full max-w-125 md:max-w-175 main-card pr-0! pl-0!">
         <CardContent>
           <Form {...form}>
@@ -503,7 +511,7 @@ const LiveGuideForm = () => {
 
               {/* Two explicit buttons rather than one whose `type` flips between
                   "button" and "submit" depending on component state. */}
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex lg:flex-col gap-2 flex-row">
                 <Button
                   type="button"
                   variant={hasResults ? "outline" : "default"}
