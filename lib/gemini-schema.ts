@@ -3,6 +3,15 @@ import z from "zod";
 /**
  * The JSON Schema keywords Gemini accepts in `responseJsonSchema`, as documented
  * on `GenerateContentConfig.responseJsonSchema` in `@google/genai`.
+ *
+ * `minItems` and `maxItems` are documented as supported but are not, once an
+ * array is nested inside another array's `items` - the exact shape of this
+ * response, whose days each hold a list of activities. Sending either keyword
+ * anywhere in that document makes the API answer `400 INVALID_ARGUMENT` before
+ * the model runs, so the whole request fails rather than the bound being
+ * ignored. Dropping them costs nothing: `aiTripResponseSchema` still enforces
+ * both bounds when the response is parsed, which is what actually protects the
+ * database from a runaway itinerary.
  */
 const SUPPORTED_KEYWORDS = new Set([
   "$id",
@@ -16,8 +25,6 @@ const SUPPORTED_KEYWORDS = new Set([
   "enum",
   "items",
   "prefixItems",
-  "minItems",
-  "maxItems",
   "minimum",
   "maximum",
   "anyOf",

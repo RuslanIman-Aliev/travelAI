@@ -261,8 +261,10 @@ describe("generateTripFunction", () => {
       ],
     });
 
+    // The message has to name the field: the response is gone by the time
+    // anyone reads the failed run, so a bare "did not match" is unactionable.
     await expect(run()).rejects.toThrow(
-      "AI response did not match itinerary schema",
+      /AI response did not match itinerary schema: itinerary\[0\]\.activities\[0\]\.placeType: /,
     );
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
@@ -337,12 +339,19 @@ describe("generateTripFunction", () => {
       expect(configOf().maxOutputTokens).toBeGreaterThan(32_768);
     });
 
-    it("does not send a Gemini response schema", async () => {
+    it("sends a schema that permits both the itinerary and the error escape hatch", async () => {
       respondWith(validItinerary);
 
       await run();
 
-      expect(configOf().responseJsonSchema).toBeUndefined();
+      const schema = configOf().responseJsonSchema;
+      expect(schema.anyOf).toHaveLength(2);
+      // Unsupported keywords would make Gemini reject the whole request.
+      expect(JSON.stringify(schema)).not.toContain("minLength");
+      expect(JSON.stringify(schema)).not.toContain("$schema");
+      // Rejected with 400 for arrays nested in arrays, which is this response.
+      expect(JSON.stringify(schema)).not.toContain("minItems");
+      expect(JSON.stringify(schema)).not.toContain("maxItems");
     });
   });
 

@@ -1,7 +1,9 @@
 import { prisma } from "@/prisma";
 import { FinishReason, GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NonRetriableError } from "inngest";
+import type { ZodError } from "zod";
 import { parseCostString } from "../cost";
+import { toGeminiResponseSchema } from "../gemini-schema";
 import type { AIActivity, AIDay } from "../types";
 import { getAIPrompt, getPhotoByDestination } from "../utils";
 import {
@@ -44,6 +46,18 @@ const resolveThinkingLevel = (): ThinkingLevel => {
 };
 
 const THINKING_LEVEL = resolveThinkingLevel();
+
+/**
+ * Built once: converting the Zod schema walks the whole tree, and it never
+ * changes between requests.
+ */
+const RESPONSE_JSON_SCHEMA = toGeminiResponseSchema(aiGenerationResponseSchema);
+
+/** How much of a rejected response to log before it stops being useful. */
+const REJECTED_RESPONSE_LOG_LENGTH = 2_000;
+
+/** How many Zod issues to name in the thrown message. */
+const REPORTED_ISSUE_LIMIT = 5;
 
 /**
  * Token cost of the pieces of a response, used to size the output ceiling from
@@ -166,6 +180,70 @@ const toActivityCreateInput = (activity: AIActivity, index: number) => {
   };
 };
 
+type ValidationIssue = ZodError["issues"][number];
+
+/** How deep into the response an issue points, used to rank union branches. */
+const deepestPath = (issues: readonly ValidationIssue[]) =>
+  issues.reduce((deepest, issue) => Math.max(deepest, issue.path.length), 0);
+
+/**
+ * Flattens a union failure down to the branch the model was actually attempting.
+ *
+ * A failed `aiGenerationResponseSchema` parse always reports `invalid_union` at
+ * the root, and the only useful detail sits in the per-branch issues nested
+ * inside it. Reporting every branch would pair the real problem with a useless
+ * "error: expected string, received undefined" from the escape hatch, so the
+ * branch whose issues reach furthest into the response wins - a malformed
+ * itinerary points at `itinerary[0].activities[2].placeType`, while the error
+ * variant can only ever point at `error`.
+ *
+ * @param {readonly ValidationIssue[]} issues - Issues from one parse attempt.
+ * @returns {ValidationIssue[]} The issues worth reporting.
+ */
+const significantIssues = (
+  issues: readonly ValidationIssue[],
+): ValidationIssue[] =>
+  issues.flatMap((issue) => {
+    if (issue.code !== "invalid_union" || issue.errors.length === 0) {
+      return issue;
+    }
+
+    const branches = issue.errors.map((branch) => significantIssues(branch));
+    return branches.reduce((deepest, branch) =>
+      deepestPath(branch) > deepestPath(deepest) ? branch : deepest,
+    );
+  });
+
+/**
+ * Renders the path of an issue the way the response itself is indexed, so the
+ * offending value can be found in the logged payload by reading it.
+ *
+ * @param {readonly PropertyKey[]} path - The issue's path.
+ * @returns {string} A dotted path with array indices in brackets.
+ */
+const formatIssuePath = (path: readonly PropertyKey[]) =>
+  path.reduce<string>((rendered, segment) => {
+    if (typeof segment === "number") return `${rendered}[${segment}]`;
+    return rendered ? `${rendered}.${String(segment)}` : String(segment);
+  }, "") || "(root)";
+
+/**
+ * Summarises a validation failure for the message Inngest shows on the run.
+ *
+ * @param {ZodError} error - The failed parse.
+ * @returns {string} A short, single-line description of what did not match.
+ */
+const describeIssues = (error: ZodError) => {
+  const issues = significantIssues(error.issues);
+  const reported = issues
+    .slice(0, REPORTED_ISSUE_LIMIT)
+    .map((issue) => `${formatIssuePath(issue.path)}: ${issue.message}`)
+    .join("; ");
+  const remaining = issues.length - REPORTED_ISSUE_LIMIT;
+
+  return remaining > 0 ? `${reported} (+${remaining} more)` : reported;
+};
+
 /**
  * The terminal state for a run that exhausted its retries.
  *
@@ -242,7 +320,10 @@ export const generateTripFunction = inngest.createFunction(
         model: MODEL,
         contents: prompt,
         config: {
-          // responseMimeType: "application/json",
+          responseMimeType: "application/json",
+          // Constrained decoding: the model can only emit a shape that parses,
+          // which removes the schema-mismatch retry - a full second generation.
+          responseJsonSchema: RESPONSE_JSON_SCHEMA,
           thinkingConfig: { thinkingLevel: THINKING_LEVEL },
           maxOutputTokens,
         },
@@ -293,7 +374,19 @@ export const generateTripFunction = inngest.createFunction(
 
       const parsed = aiGenerationResponseSchema.safeParse(json);
       if (!parsed.success) {
-        throw new Error("AI response did not match itinerary schema");
+        // The bare message this used to throw named neither the field nor the
+        // value, which made a mismatch impossible to act on: the response is
+        // gone by the time anyone reads the run. Log the payload that failed,
+        // and put the failing paths in the message Inngest surfaces.
+        console.error("[gemini] itinerary failed validation", {
+          tripId,
+          issues: parsed.error.issues,
+          response: text.slice(0, REJECTED_RESPONSE_LOG_LENGTH),
+        });
+
+        throw new Error(
+          `AI response did not match itinerary schema: ${describeIssues(parsed.error)}`,
+        );
       }
 
       return parsed.data;

@@ -15,8 +15,6 @@ const SUPPORTED = new Set([
   "enum",
   "items",
   "prefixItems",
-  "minItems",
-  "maxItems",
   "minimum",
   "maximum",
   "anyOf",
@@ -93,14 +91,14 @@ describe("toGeminiResponseSchema", () => {
     expect(itineraryVariant.properties).toHaveProperty("itinerary");
   });
 
-  it("keeps the bounds that stop a runaway itinerary", () => {
+  it("drops array bounds, which Gemini rejects for a nested array", () => {
+    // `minItems`/`maxItems` are documented as supported but produce a 400 once
+    // an array sits inside another array's `items` - days holding activities,
+    // which is exactly this response. The bounds still hold: they are enforced
+    // when the response is parsed with the Zod schema.
     const schema = toGeminiResponseSchema(aiGenerationResponseSchema);
-    const itinerary = (
-      (schema.anyOf as Array<{ properties: Record<string, unknown> }>)[1]
-        .properties as { itinerary: { minItems: number; maxItems: number } }
-    ).itinerary;
 
-    expect(itinerary.minItems).toBe(1);
-    expect(itinerary.maxItems).toBe(30);
+    expect(JSON.stringify(schema)).not.toContain("minItems");
+    expect(JSON.stringify(schema)).not.toContain("maxItems");
   });
 });
